@@ -25,6 +25,7 @@ export class WorldMapScene extends Phaser.Scene {
   create() {
     if (!gameState.hasProfile) { this.scene.start('Title'); return; }
     enterScene(this);
+    audio.setTheme('main');
     audio.startMusic();
     this.drawLand();
     this.drawPath();
@@ -75,6 +76,11 @@ export class WorldMapScene extends Phaser.Scene {
     label(this, x, y + 172, world.short, { size: 46, color: '#FFFFFF', stroke: unlocked ? '#17324D' : '#5F7183', strokeThickness: 12 });
 
     if (unlocked) {
+      // Mejor resultado conseguido en este mundo.
+      const best = gameState.worldProgress(world.id).bestStars;
+      for (let i = 0; i < 3; i++) {
+        this.add.image(x - 50 + i * 50, y + 232, 'ic-star').setDisplaySize(46, 46).setTint(i < best ? 0xffc107 : 0x1f5d3c).setAlpha(i < best ? 1 : 0.35);
+      }
       this.tweens.add({ targets: b, y: y - 12, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     }
     // El avatar del jugador marca el mundo más avanzado que tiene abierto.

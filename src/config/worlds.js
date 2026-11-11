@@ -4,6 +4,7 @@
 export const WORLDS = [
   {
     id: 'city',
+    wastes: ['botella', 'lata', 'carton', 'periodico', 'papel', 'tapa', 'banano', 'comida', 'naranja', 'servilleta', 'chicle', 'papas'], // residuos típicos de este mundo (salen primero en las rondas)
     order: 1,
     name: 'La Ciudad Contaminada',
     short: 'Ciudad',
@@ -18,6 +19,7 @@ export const WORLDS = [
   },
   {
     id: 'forest',
+    wastes: ['hojas', 'manzana', 'banano', 'naranja', 'huevo', 'botella', 'lata', 'vidrio', 'bolsa', 'papas', 'servilleta', 'chicle'], // residuos típicos de este mundo (salen primero en las rondas)
     order: 2,
     name: 'El Bosque Perdido',
     short: 'Bosque',
@@ -32,6 +34,7 @@ export const WORLDS = [
   },
   {
     id: 'ocean',
+    wastes: ['botella', 'bolsa', 'tapa', 'lata', 'vidrio', 'tetrapak', 'comida', 'vaso', 'tapabocas', 'icopor', 'papas', 'chicle'], // residuos típicos de este mundo (salen primero en las rondas)
     order: 3,
     name: 'El Océano en Peligro',
     short: 'Océano',
@@ -46,6 +49,7 @@ export const WORLDS = [
   },
   {
     id: 'mountain',
+    wastes: ['carton', 'papel', 'tetrapak', 'frasco', 'cafe', 'huevo', 'hojas', 'pizza', 'icopor', 'higienico', 'tapabocas', 'vaso'], // residuos típicos de este mundo (salen primero en las rondas)
     order: 4,
     name: 'La Montaña de Residuos',
     short: 'Montaña',
@@ -60,6 +64,7 @@ export const WORLDS = [
   },
   {
     id: 'future',
+    wastes: [], // residuos típicos de este mundo (salen primero en las rondas)
     order: 5,
     name: 'El Futuro Sostenible',
     short: 'Futuro',

@@ -13,6 +13,7 @@ export class TitleScene extends Phaser.Scene {
 
   create() {
     enterScene(this);
+    audio.setTheme('main');
     drawMeadow(this);
 
     // Hojas que caen con el viento.

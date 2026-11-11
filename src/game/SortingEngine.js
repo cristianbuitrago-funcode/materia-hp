@@ -28,12 +28,16 @@ function shuffle(list, rng) {
 
 // Elige los residuos de una ronda: sin repetir, con las tres canecas presentes
 // y, si es posible, sin dos residuos seguidos de la misma caneca al empezar.
-export function buildRound(ageMode, rng = Math.random) {
+// `preferred` son los ids típicos del mundo: se usan primero y, si no alcanzan
+// para la dificultad del jugador, la ronda se completa con el resto del catálogo.
+export function buildRound(ageMode, rng = Math.random, preferred = []) {
   const rules = ROUND_RULES[ageMode];
   if (!rules) throw new Error(`Modo de edad no válido: ${ageMode}`);
-  const pool = WASTES.filter((w) => w.tier <= rules.maxTier);
+  const pool = shuffle(WASTES.filter((w) => w.tier <= rules.maxTier), rng);
   const byBin = { white: [], black: [], green: [] };
-  for (const w of shuffle(pool, rng)) byBin[w.bin].push(w);
+  // Se toma del final de cada lista, así que los preferidos van al final.
+  for (const w of pool.filter((x) => !preferred.includes(x.id))) byBin[w.bin].push(w);
+  for (const w of pool.filter((x) => preferred.includes(x.id))) byBin[w.bin].push(w);
   // Reparto por turnos entre canecas para que la ronda quede equilibrada.
   const picked = [];
   const order = shuffle(Object.keys(byBin), rng);

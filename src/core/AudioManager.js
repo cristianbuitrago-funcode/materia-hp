@@ -3,20 +3,47 @@
 import { gameState } from './GameState.js';
 
 const SEMITONES = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-function freq(note) {
-  const n = SEMITONES[note[0]] + (Number(note.slice(1)) + 1) * 12;
+export function freq(note) {
+  const sharp = note[1] === '#' ? 1 : 0;
+  const n = SEMITONES[note[0]] + sharp + (Number(note.slice(1 + sharp)) + 1) * 12;
   return 440 * Math.pow(2, (n - 69) / 12);
 }
 
-// Melodía alegre en do mayor (C–G–Am–F), 8 corcheas por compás.
-const MELODY = [
-  'E5', 'G5', 'C6', 'G5', 'E5', 'G5', 'A5', 'G5',
-  'D5', 'G5', 'B5', 'G5', 'D5', 'G5', 'A5', 'B5',
-  'C5', 'E5', 'A5', 'E5', 'C5', 'E5', 'G5', 'E5',
-  'F5', 'A5', 'C6', 'A5', 'G5', 'F5', 'E5', 'D5',
-];
-const BASS = ['C3', 'G2', 'A2', 'F2'];
-const STEP = 0.25; // segundos por corchea
+// Temas musicales: cada mundo tiene melodía, ritmo y timbre propios.
+// 8 corcheas por compás; '-' es silencio; `bass` tiene una nota por compás.
+const THEMES = {
+  // Tema principal (inicio y mapa): alegre, en do mayor.
+  main: { step: 0.25, lead: 'triangle', vol: 0.07,
+    melody: ['E5', 'G5', 'C6', 'G5', 'E5', 'G5', 'A5', 'G5', 'D5', 'G5', 'B5', 'G5', 'D5', 'G5', 'A5', 'B5',
+      'C5', 'E5', 'A5', 'E5', 'C5', 'E5', 'G5', 'E5', 'F5', 'A5', 'C6', 'A5', 'G5', 'F5', 'E5', 'D5'],
+    bass: ['C3', 'G2', 'A2', 'F2'] },
+  // Ciudad: rápida y saltarina, con silencios como pasos por la calle.
+  city: { step: 0.2, lead: 'square', vol: 0.035,
+    melody: ['G4', '-', 'B4', 'D5', '-', 'B4', 'G4', '-', 'A4', '-', 'C5', 'E5', '-', 'C5', 'A4', '-',
+      'B4', '-', 'D5', 'G5', '-', 'D5', 'B4', '-', 'D5', 'E5', 'D5', 'B4', 'A4', '-', 'G4', '-'],
+    bass: ['G2', 'A2', 'B2', 'D3'] },
+  // Bosque: pentatónica, tranquila.
+  forest: { step: 0.3, lead: 'sine', vol: 0.09,
+    melody: ['D5', 'F#5', 'A5', '-', 'B5', 'A5', 'F#5', '-', 'E5', 'F#5', 'A5', '-', 'F#5', 'E5', 'D5', '-',
+      'B4', 'D5', 'E5', '-', 'F#5', 'E5', 'D5', '-', 'A4', 'B4', 'D5', 'E5', 'D5', '-', '-', '-'],
+    bass: ['D3', 'A2', 'B2', 'G2'] },
+  // Océano: lenta, en arpegios que suben y bajan como olas.
+  ocean: { step: 0.34, lead: 'sine', vol: 0.09,
+    melody: ['A4', 'C5', 'E5', 'A5', 'E5', 'C5', 'A4', '-', 'F4', 'A4', 'C5', 'F5', 'C5', 'A4', 'F4', '-',
+      'C5', 'E5', 'G5', 'C6', 'G5', 'E5', 'C5', '-', 'G4', 'B4', 'D5', 'G5', 'D5', 'B4', 'G4', '-'],
+    bass: ['A2', 'F2', 'C3', 'G2'] },
+  // Montaña: en re menor, algo misteriosa pero con final esperanzador.
+  mountain: { step: 0.28, lead: 'triangle', vol: 0.07,
+    melody: ['D5', '-', 'F5', 'E5', 'D5', '-', 'A4', '-', 'A#4', '-', 'D5', 'C5', 'A#4', '-', 'G4', '-',
+      'F4', 'A4', 'C5', 'F5', 'E5', '-', 'C5', '-', 'A4', 'C#5', 'E5', 'A5', 'G5', 'E5', 'C#5', '-'],
+    bass: ['D3', 'A#2', 'F2', 'A2'] },
+  // Futuro: brillante, aguda y veloz.
+  future: { step: 0.19, lead: 'triangle', vol: 0.065,
+    melody: ['C5', 'E5', 'G5', 'C6', 'E6', 'C6', 'G5', 'E5', 'F5', 'A5', 'C6', 'F6', 'C6', 'A5', 'F5', 'A5',
+      'G5', 'B5', 'D6', 'G6', 'D6', 'B5', 'G5', 'B5', 'C6', 'G5', 'E6', 'D6', 'C6', 'B5', 'C6', '-'],
+    bass: ['C3', 'F2', 'G2', 'C3'] },
+};
+export { THEMES };
 
 class AudioManager {
   constructor() {
@@ -25,6 +52,7 @@ class AudioManager {
     this.timer = null;
     this.step = 0;
     this.nextTime = 0;
+    this.theme = 'main';
   }
 
   // Llamar desde un gesto del usuario (clic, toque o tecla).
@@ -92,15 +120,27 @@ class AudioManager {
   }
 
   schedule() {
+    const t = THEMES[this.theme];
     while (this.nextTime < this.ctx.currentTime + 0.4) {
-      const i = this.step % MELODY.length;
-      this.tone(freq(MELODY[i]), this.nextTime, STEP * 0.9, { type: 'triangle', vol: 0.07, out: this.musicGain });
-      if (i % 4 === 0) {
-        this.tone(freq(BASS[Math.floor(i / 8)]), this.nextTime, STEP * 3.5, { type: 'sine', vol: 0.12, out: this.musicGain });
+      const i = this.step % t.melody.length;
+      if (t.melody[i] !== '-') {
+        this.tone(freq(t.melody[i]), this.nextTime, t.step * 0.9, { type: t.lead, vol: t.vol, out: this.musicGain });
       }
-      this.nextTime += STEP;
+      if (i % 4 === 0) {
+        this.tone(freq(t.bass[Math.floor(i / 8)]), this.nextTime, t.step * 3.5, { type: 'sine', vol: 0.12, out: this.musicGain });
+      }
+      this.nextTime += t.step;
       this.step++;
     }
+  }
+
+  // Cambia el tema musical (cada mundo tiene el suyo). Si la música está apagada, solo lo recuerda.
+  setTheme(name) {
+    if (!THEMES[name]) throw new Error(`Tema musical desconocido: ${name}`);
+    if (this.theme === name) return;
+    this.theme = name;
+    this.step = 0;
+    if (this.ctx) this.nextTime = this.ctx.currentTime + 0.25;
   }
 
   stopMusic() {

@@ -127,8 +127,8 @@ describe('guardado del resultado de una ronda', () => {
     const storage = new MemoryStorage();
     const s = new GameState(storage).load();
     const summary = { total: 6, firstTry: 5, mistakes: 1, stars: 2, xp: 65, coins: 16, learned: ['lata', 'banano'] };
-    expect(s.applyRoundResult(summary)).toEqual({ leveledUp: false, level: 1 });
-    expect(s.applyRoundResult({ ...summary, learned: ['lata', 'vidrio'] })).toEqual({ leveledUp: true, level: 2 });
+    expect(s.applyRoundResult(summary)).toEqual({ leveledUp: false, level: 1, unlockedWorld: null });
+    expect(s.applyRoundResult({ ...summary, learned: ['lata', 'vidrio'] })).toEqual({ leveledUp: true, level: 2, unlockedWorld: null });
     const again = new GameState(storage).load();
     expect(again.progress).toMatchObject({ experience: 130, ecoCoins: 32, level: 2, roundsPlayed: 2, correctAnswers: 12, incorrectAnswers: 2,
       learnedWasteTypes: ['lata', 'banano', 'vidrio'] });

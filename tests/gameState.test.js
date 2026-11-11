@@ -67,5 +67,6 @@ describe('GameState', () => {
     s.markStorySeen();
     s.resetGame();
     expect(s.data).toEqual({ ...defaultState(), settings: { music: true, sfx: false } });
+    expect(s.progress.worldProgress).toEqual({});
   });
 });

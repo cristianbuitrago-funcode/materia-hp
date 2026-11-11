@@ -2,11 +2,11 @@
 // Se juega arrastrando, tocando la caneca o con teclado (flechas/Tab + Enter, o teclas 1, 2 y 3).
 import Phaser from 'phaser';
 import { W, H, theme } from '../config/theme.js';
-import { drawSky, addClouds, drawHills } from '../art/backgrounds.js';
-import { Button, label, panel, chip, darker } from '../ui/widgets.js';
+import { Button, label, panel, chip } from '../ui/widgets.js';
 import { Character } from '../ui/Character.js';
 import { enterScene, goTo, openOverlay } from '../core/Navigation.js';
-import { gameState } from '../core/GameState.js';
+import { gameState, CLEAN_PER_ROUND } from '../core/GameState.js';
+import { buildWorld } from '../worlds/index.js';
 import { audio } from '../core/AudioManager.js';
 import { getWorld } from '../config/worlds.js';
 import { BINS, getBin } from '../game/bins.js';
@@ -26,7 +26,7 @@ export class SortingScene extends Phaser.Scene {
     enterScene(this);
     this.world = world;
     const mode = gameState.profile.ageMode;
-    this.round = new SortingRound(buildRound(mode), { hintAfter: ROUND_RULES[mode].hintAfter });
+    this.round = new SortingRound(buildRound(mode, Math.random, world.wastes), { hintAfter: ROUND_RULES[mode].hintAfter });
     this.busy = true;
     this.waste = null;
     this.nameText = null;
@@ -35,10 +35,12 @@ export class SortingScene extends Phaser.Scene {
     this.pendingHint = false;
     this.prevFocus = null;
 
-    drawSky(this, world.sky[0], world.sky[1]);
-    addClouds(this, 3, { yMax: 240, alpha: 0.7 });
-    drawHills(this, darker(world.ground, 12), 560, [[300, 600, 130], [1500, 800, 160]]);
-    drawHills(this, world.ground, 700, [[1000, 1100, 90]]);
+    // El escenario empieza tan limpio como lo dejó el jugador y se limpia más con cada acierto.
+    this.cleanStart = gameState.worldProgress(world.id).clean;
+    this.cleanGain = Math.min(1, this.cleanStart + CLEAN_PER_ROUND) - this.cleanStart;
+    this.env = buildWorld(this, world.id, this.cleanStart);
+    audio.setTheme(world.id);
+    audio.startMusic();
 
     this.addHud();
     this.bins = BINS.map((bin, i) => new BinTarget(this, BIN_X[i], 800, bin, (id) => this.choose(id)));
@@ -208,6 +210,7 @@ export class SortingScene extends Phaser.Scene {
     this.floatReward(bin.mouth.x - 90, bin.mouth.y - 40, `+${result.xp}`, 'ic-star', 0xf9a825);
     this.time.delayedCall(180, () => { audio.sfx('coin'); this.floatReward(bin.mouth.x + 90, bin.mouth.y - 40, `+${result.coins}`, 'ic-coin'); });
     this.updateHud();
+    this.env.setClean(this.cleanStart + (this.cleanGain * this.round.index) / this.round.total, true);
     this.guide.hop(40);
     this.say(`${result.firstTry ? '¡Muy bien!' : '¡Lo lograste!'} ${result.waste.fact}`, 'happy');
     this.time.delayedCall(result.finished ? 1900 : 2500, () => (result.finished ? this.finishRound() : this.spawnWaste()));
@@ -254,8 +257,8 @@ export class SortingScene extends Phaser.Scene {
 
   finishRound() {
     const summary = this.round.summary();
-    const { leveledUp, level } = gameState.applyRoundResult(summary);
-    goTo(this, 'Results', { worldId: this.world.id, summary, leveledUp, level });
+    const { leveledUp, level, unlockedWorld } = gameState.applyRoundResult(summary, this.world.id);
+    goTo(this, 'Results', { worldId: this.world.id, summary, leveledUp, level, unlockedWorld });
   }
 
   exit() {

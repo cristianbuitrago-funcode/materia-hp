@@ -30,6 +30,8 @@ async function start() {
     backgroundColor: '#0f5c36',
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, roundPixels: false },
+    // En equipos lentos el reloj del juego sigue el tiempo real (Phaser lo frena por debajo de `min`).
+    fps: { min: 1 },
     input: { activePointers: 3 },
     scene: [BootScene, TitleScene, StoryScene, ProfileScene, WorldMapScene, MissionIntroScene, SortingScene, ResultsScene, SettingsScene, ComingSoonScene],
   });

@@ -88,6 +88,26 @@ const ART = {
 <path d="M40 112 H160" ${line('#CFD8DC')}/>
 <path d="M62 60 Q80 46 96 62 Q112 76 132 58" ${line('#D84315', 9)}/>
 <circle cx="84" cy="140" r="12" fill="#FFB300" opacity="0.85"/><circle cx="124" cy="134" r="8" fill="#7CB342"/><circle cx="108" cy="152" r="6" fill="#D84315"/>`,
+  tapa: `<ellipse cx="100" cy="128" rx="74" ry="34" fill="#C62828" ${L}/>
+<path d="M26 96 V128 Q26 162 100 162 Q174 162 174 128 V96 Z" fill="#E53935" ${L}/>
+<ellipse cx="100" cy="96" rx="74" ry="34" fill="#EF5350" ${L}/>
+<ellipse cx="100" cy="96" rx="50" ry="21" fill="#E53935" stroke="#B71C1C" stroke-width="5"/>
+<path d="M44 118 V146 M70 128 V156 M100 132 V160 M130 128 V156 M156 118 V146" ${line('#B71C1C', 5)}/>`,
+  bolsa: `<path d="M70 62 Q66 22 84 22 Q98 22 96 62 M104 62 Q102 22 116 22 Q134 22 130 62" ${line(INK, 7)}/>
+<path d="M46 62 H154 L166 170 Q166 184 152 184 H48 Q34 184 34 170 Z" fill="#E3F2FD" ${L}/>
+<path d="M60 84 Q56 120 58 160" ${line('#fff', 7)}/>
+<path d="M82 104 L100 86 L118 104 M100 86 V132 M78 134 H122" ${line('#42A5F5', 7)}/>`,
+  naranja: `<path d="M30 110 Q30 52 92 44 Q150 40 170 92 Q150 78 122 86 Q150 104 152 146 Q128 118 100 118 Q104 150 78 172 Q76 136 56 128 Q40 126 30 110 Z" fill="#FF9800" ${L}/>
+<path d="M56 102 Q84 70 130 66" ${line('#FFCC80', 7)}/>
+<circle cx="78" cy="96" r="3" fill="#E65100"/><circle cx="104" cy="80" r="3" fill="#E65100"/><circle cx="96" cy="104" r="3" fill="#E65100"/><circle cx="128" cy="100" r="3" fill="#E65100"/>`,
+  chicle: `<path d="M40 150 Q30 118 62 108 Q60 74 96 78 Q112 52 138 72 Q170 76 162 110 Q182 134 158 154 Q150 176 118 168 Q92 184 70 168 Q46 170 40 150 Z" fill="#F48FB1" ${L}/>
+<path d="M72 120 Q84 100 104 102 M118 96 Q134 96 142 110" ${line('#FCE4EC', 7)}/>
+<path d="M96 146 Q110 156 128 148" ${line('#C2185B', 5)}/>`,
+  vaso: `<path d="M50 40 H150 L134 178 Q133 186 124 186 H76 Q67 186 66 178 Z" fill="#FAFAFA" ${L}/>
+<ellipse cx="100" cy="40" rx="50" ry="13" fill="#fff" ${L}/>
+<path d="M57 96 H143 L138 136 H62 Z" fill="#EF5350" opacity="0.9"/>
+<path d="M112 20 L128 -4" ${line(INK, 9)}/><path d="M112 20 L128 -4" ${line('#FFD23F', 4)}/>
+<path d="M72 60 Q78 78 70 92" ${line('#8D6E63', 8)}/><circle cx="122" cy="158" r="8" fill="#8D6E63" opacity="0.8"/>`,
 };
 
 export function wasteSVG(id, scale = 1) {

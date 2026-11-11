@@ -4,9 +4,9 @@ Videojuego educativo web para niños de 5 a 12 años. Enseña a identificar, sep
 disponer correctamente los residuos (código de colores de Colombia: caneca **blanca**,
 **negra** y **verde**) a través de una aventura por cinco mundos.
 
-> **Estado: FASES 1 y 2 terminadas** (identidad visual, personajes, navegación y el
-> juego de clasificación completo). El arte propio de cada mundo, las misiones, la tienda,
-> el álbum y Firebase llegan en las fases 3 a 8. Ver [Plan por fases](#plan-de-desarrollo-por-fases).
+> **Estado: FASES 1, 2 y 3 terminadas** (identidad visual, personajes, navegación, el juego
+> de clasificación y los cinco mundos con escenario, música y residuos propios). Las misiones,
+> la tienda, el álbum y Firebase llegan en las fases 4 a 8. Ver [Plan por fases](#plan-de-desarrollo-por-fases).
 
 ## Cómo ejecutarlo
 
@@ -33,7 +33,7 @@ npm run test:smoke   # recorre el juego compilado en un navegador real (requiere
 | Módulo pedido | Dónde está |
 | --- | --- |
 | Motor del videojuego | `src/main.js`, `src/scenes/` |
-| Gestión de mundos | `src/config/worlds.js`, `WorldMapScene` |
+| Gestión de mundos | `src/config/worlds.js` (datos), `src/worlds/` (escenarios y limpieza visual), `WorldMapScene` |
 | Sistema de misiones | `src/config/worlds.js` (datos), `MissionIntroScene` — lógica en fase 4 |
 | Clasificación de residuos | `src/game/` (catálogo, canecas, `SortingEngine`), `SortingScene`, `ResultsScene` |
 | Sistema de recompensas | experiencia, monedas, nivel y estrellas en `SortingEngine` y `GameState` — insignias, tienda y álbum en fase 5 |
@@ -51,7 +51,8 @@ src/
   config/                 Datos: theme, worlds, ageModes, avatars, story
   core/                   GameState (guardado), AudioManager, Navigation (transiciones)
   art/                    characters (ECO, RECICLÍN, CONTAMINATOR, avatares), icons, textures, backgrounds
-  game/                   wastes (20 residuos), bins (3 canecas), SortingEngine (rondas y premios), BinTarget
+  game/                   wastes (25 residuos), bins (3 canecas), SortingEngine (rondas y premios), BinTarget
+  worlds/                 city, forest, ocean, mountain, future (escenarios), kit (piezas), index (limpieza visual)
   ui/                     widgets (Button, panel, toast, chip), Character, DialogBox, FocusManager
   scenes/                 Boot, Title, Story, Profile, WorldMap, MissionIntro, Sorting, Results, Settings, ComingSoon
 tests/                    Pruebas unitarias
@@ -90,6 +91,24 @@ en qué fase llegan; no simulan funcionalidad.
 - **Recompensas ligadas al aprendizaje**: monedas ecológicas, experiencia y niveles, cinco insignias
   (una por mundo), álbum ecológico y mundos que se limpian visualmente. Sin compras, apuestas ni cajas aleatorias.
 
+## Los cinco mundos (hecho)
+
+| Mundo | Escenario | Al recuperarse aparecen | Residuos típicos | Música |
+| --- | --- | --- | --- | --- |
+| 1 · Ciudad Contaminada | Edificios, tienda, colegio, parque y calle con humo y bolsas de basura | Árboles, flores, banca y pájaros | Botellas, latas, papel, cartón, cáscaras, chicle | Rápida y saltarina |
+| 2 · Bosque Perdido | Pinos, sendero y árboles grandes con basura y neblina | Flores, hongos, mariposas, un conejo | Hojas secas, cáscaras, botellas, bolsas | Pentatónica y tranquila |
+| 3 · Océano en Peligro | Fondo marino con bolsas y botellas a la deriva y corales grises | Corales de colores, peces y una tortuga | Bolsas, tapas, botellas, icopor, vasos | Lenta, en olas |
+| 4 · Montaña de Residuos | Un botadero gigante con humo | Colina verde, planta de reciclaje y composteras | Casos difíciles: caja de pizza, icopor, caja de leche | En tono menor, con final esperanzador |
+| 5 · Futuro Sostenible | Aerogeneradores, casas con paneles solares y ciclorruta, con terrenos sin recuperar | Arcoíris, huerta, árboles y mariposas | Todo el catálogo | Brillante y veloz |
+
+- **Reconstrucción de escenarios:** cada acierto limpia un poco el mundo a la vista del jugador
+  (la basura desaparece, vuelve la vida y se despeja la neblina). Cada ronda terminada recupera
+  un tercio del mundo y queda guardado; con tres rondas el mundo está recuperado.
+- **Desbloqueo provisional:** terminar una ronda en un mundo abre el siguiente. La fase 4 lo
+  condicionará a completar las misiones.
+- **Rendimiento:** las capas fijas de cada escenario se convierten en una sola imagen al cargar,
+  para que el juego funcione en computadores modestos.
+
 ## Privacidad infantil
 
 - El modo de prueba no pide ni guarda datos personales: solo rango de edad, avatar y un
@@ -118,7 +137,7 @@ las gestiona Firebase Authentication; en el cliente solo va la configuración p�
 | --- | --- | --- |
 | 1 | Diseño visual, identidad, personajes, arquitectura y navegación | ✅ Terminada |
 | 2 | Motor del juego y mecánica Sorting Game (arrastrar, tocar, teclado) | ✅ Terminada |
-| 3 | Los cinco mundos con arte, música y elementos propios | Pendiente |
+| 3 | Los cinco mundos con arte, música y elementos propios | ✅ Terminada |
 | 4 | Misiones, niveles y dificultad adaptativa | Pendiente |
 | 5 | Monedas, experiencia, insignias, tienda, álbum, perfil | Pendiente |
 | 6 | Firebase Authentication, Firestore, reglas de seguridad, Hosting | Pendiente |

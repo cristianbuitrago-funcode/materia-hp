@@ -177,7 +177,38 @@ async function main() {
     const want = { experience: 85, ecoCoins: 20, roundsPlayed: 1, correctAnswers: 8, incorrectAnswers: 1 };
     for (const [k, v] of Object.entries(want)) if (prog[k] !== v) throw new Error(`Progreso guardado: ${k}=${prog[k]}, se esperaba ${v}`);
     if (prog.learnedWasteTypes.length !== 8) throw new Error('No se guardaron los 8 residuos aprendidos');
+    // La ronda limpia un tercio de la ciudad y abre el bosque.
+    const city = prog.worldProgress.city;
+    if (!city || city.rounds !== 1 || city.bestStars !== 3 || Math.abs(city.clean - 1 / 3) > 1e-9) throw new Error(`Progreso de la ciudad: ${JSON.stringify(city)}`);
+    if (JSON.stringify(prog.unlockedWorlds) !== '["city","forest"]') throw new Error(`Mundos abiertos: ${prog.unlockedWorlds}`);
     await click(W / 2 + 190 - 300, 970); // Mapa
+    await waitScene('WorldMap');
+    await page.waitForTimeout(600);
+    await shot('09e-mapa-bosque-abierto');
+
+    // Mundo 2 (recién abierto): su propio escenario, guía y residuos.
+    await click(640, 400);
+    await waitScene('MissionIntro');
+    await page.waitForTimeout(900);
+    await shot('09f-bosque-misiones');
+    await page.keyboard.press('Enter'); // ¡Comenzar!
+    await waitScene('Sorting');
+    await waitReady();
+    const forest = await page.evaluate(() => {
+      const s = window.__ECOMISION__.scene.getScene('Sorting');
+      return { world: s.world.id, clean: s.env.clean, ids: s.round.wastes.map((w) => w.id), typical: s.world.wastes };
+    });
+    if (forest.world !== 'forest' || forest.clean !== 0) throw new Error(`Bosque: ${JSON.stringify(forest)}`);
+    if (forest.ids.filter((id) => forest.typical.includes(id)).length < 6) throw new Error(`La ronda del bosque no usa sus residuos típicos: ${forest.ids}`);
+    // Dos aciertos: el escenario se va limpiando durante la ronda.
+    for (let i = 0; i < 2; i++) { await waitReady(); await click(BIN_X[(await sorting()).bin], 760); await waitIndex(i + 1); }
+    const cleaned = await page.evaluate(() => window.__ECOMISION__.scene.getScene('Sorting').env.clean);
+    if (!(cleaned > 0.08 && cleaned < 0.09)) throw new Error(`Limpieza tras 2 de 8 aciertos: ${cleaned}`);
+    await page.waitForTimeout(900);
+    await shot('09g-bosque-jugando');
+    await page.keyboard.press('Escape'); // salir a mitad de ronda no guarda ni castiga
+    await waitScene('MissionIntro');
+    await page.keyboard.press('Escape');
     await waitScene('WorldMap');
 
     // Barra de secciones → pantalla "en construcción" → volver.

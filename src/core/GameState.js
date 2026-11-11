@@ -2,7 +2,7 @@
 // de un adaptador de almacenamiento. En modo de prueba se usa localStorage;
 // en la fase 6 se añade un adaptador de Cloud Firestore con la misma interfaz
 // ({ load(), save(data), clear() }).
-import { FIRST_WORLD, getWorld } from '../config/worlds.js';
+import { FIRST_WORLD, getWorld, nextWorld } from '../config/worlds.js';
 import { getAgeMode } from '../config/ageModes.js';
 import { isValidAvatar } from '../config/avatars.js';
 
@@ -25,6 +25,7 @@ export function defaultState() {
       correctAnswers: 0,
       incorrectAnswers: 0,
       learnedWasteTypes: [],
+      worldProgress: {}, // { [worldId]: { rounds, bestStars, clean } } · clean va de 0 (contaminado) a 1 (recuperado)
     },
   };
 }
@@ -33,6 +34,9 @@ export const XP_PER_LEVEL = 100;
 export function levelForXp(xp) {
   return 1 + Math.floor(Math.max(0, xp) / XP_PER_LEVEL);
 }
+
+// Cada ronda terminada limpia un tercio del mundo: con tres rondas queda recuperado.
+export const CLEAN_PER_ROUND = 1 / 3;
 
 export class MemoryStorage {
   constructor() { this.data = null; }
@@ -77,6 +81,18 @@ export class GameState {
         if (!Number.isFinite(base.progress[k]) || base.progress[k] < 0) base.progress[k] = 0;
       }
       base.progress.level = levelForXp(base.progress.experience);
+      const wp = base.progress.worldProgress;
+      base.progress.worldProgress = {};
+      if (wp && typeof wp === 'object') {
+        for (const [id, v] of Object.entries(wp)) {
+          if (!getWorld(id) || !v || typeof v !== 'object') continue;
+          base.progress.worldProgress[id] = {
+            rounds: Number.isFinite(v.rounds) && v.rounds > 0 ? Math.floor(v.rounds) : 0,
+            bestStars: [1, 2, 3].includes(v.bestStars) ? v.bestStars : 0,
+            clean: Number.isFinite(v.clean) ? Math.min(1, Math.max(0, v.clean)) : 0,
+          };
+        }
+      }
       if (!Array.isArray(base.progress.unlockedWorlds) || !base.progress.unlockedWorlds.includes(FIRST_WORLD)) {
         base.progress.unlockedWorlds = [FIRST_WORLD];
       }
@@ -130,8 +146,14 @@ export class GameState {
     }
   }
 
+  worldProgress(worldId) {
+    return this.data.progress.worldProgress[worldId] || { rounds: 0, bestStars: 0, clean: 0 };
+  }
+
   // Guarda el resultado de una ronda de clasificación (resumen de SortingRound).
-  applyRoundResult(summary) {
+  // Si se indica el mundo, este queda más limpio y, al terminar la primera ronda,
+  // se abre el mundo siguiente (la fase 4 lo condicionará a las misiones).
+  applyRoundResult(summary, worldId = null) {
     const p = this.data.progress;
     const before = p.level;
     p.experience += summary.xp;
@@ -141,8 +163,23 @@ export class GameState {
     p.correctAnswers += summary.total;
     p.incorrectAnswers += summary.mistakes;
     for (const id of summary.learned) if (!p.learnedWasteTypes.includes(id)) p.learnedWasteTypes.push(id);
+    let unlockedWorld = null;
+    if (worldId) {
+      if (!getWorld(worldId)) throw new Error(`Mundo desconocido: ${worldId}`);
+      const w = this.worldProgress(worldId);
+      p.worldProgress[worldId] = {
+        rounds: w.rounds + 1,
+        bestStars: Math.max(w.bestStars, summary.stars),
+        clean: Math.min(1, w.clean + CLEAN_PER_ROUND),
+      };
+      const next = nextWorld(worldId);
+      if (next && !p.unlockedWorlds.includes(next.id)) {
+        p.unlockedWorlds.push(next.id);
+        unlockedWorld = next.id;
+      }
+    }
     this.save();
-    return { leveledUp: p.level > before, level: p.level };
+    return { leveledUp: p.level > before, level: p.level, unlockedWorld };
   }
 
   // Borra perfil y progreso; conserva los ajustes de sonido.

@@ -2,7 +2,8 @@
 import Phaser from 'phaser';
 import { W, H, theme } from '../config/theme.js';
 import { drawMeadow } from '../art/backgrounds.js';
-import { Button, label, panel } from '../ui/widgets.js';
+import { Button, label, panel, toast } from '../ui/widgets.js';
+import { getWorld } from '../config/worlds.js';
 import { Character } from '../ui/Character.js';
 import { enterScene, goTo } from '../core/Navigation.js';
 import { gameState, XP_PER_LEVEL } from '../core/GameState.js';
@@ -66,6 +67,8 @@ export class ResultsScene extends Phaser.Scene {
     this.onCancel = () => goTo(this, 'WorldMap');
 
     this.time.delayedCall(300, () => audio.sfx('fanfare'));
+    const opened = data.unlockedWorld && getWorld(data.unlockedWorld);
+    if (opened) this.time.delayedCall(1800, () => toast(this, `¡Abriste un mundo nuevo: ${opened.name}!`, { who: 'eco', duration: 4500 }));
   }
 
   prize(x, y, icon, text, tint = null) {

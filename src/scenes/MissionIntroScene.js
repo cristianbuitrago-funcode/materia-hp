@@ -1,7 +1,8 @@
 // Introducción de misiones de un mundo: su guía lo presenta y lista las misiones.
 import Phaser from 'phaser';
 import { W, H, theme } from '../config/theme.js';
-import { drawSky, addClouds, drawHills } from '../art/backgrounds.js';
+import { buildWorld } from '../worlds/index.js';
+import { audio } from '../core/AudioManager.js';
 import { Button, label, panel, darker } from '../ui/widgets.js';
 import { Character } from '../ui/Character.js';
 import { enterScene, goTo } from '../core/Navigation.js';
@@ -18,10 +19,10 @@ export class MissionIntroScene extends Phaser.Scene {
     this.world = world;
     const hex = '#' + darker(world.color, 35).toString(16).padStart(6, '0');
 
-    drawSky(this, world.sky[0], world.sky[1]);
-    addClouds(this, 3, { yMax: 260, alpha: 0.7 });
-    drawHills(this, darker(world.ground, 12), 800, [[400, 700, 150], [1500, 800, 190]]);
-    drawHills(this, world.ground, 900, [[900, 1000, 110]]);
+    const progress = gameState.worldProgress(world.id);
+    buildWorld(this, world.id, progress.clean);
+    audio.setTheme(world.id);
+    audio.startMusic();
 
     // Guía con globo de diálogo
     const guide = new Character(this, 380, 1010, world.guide, { scale: 1.05 });
@@ -43,6 +44,12 @@ export class MissionIntroScene extends Phaser.Scene {
     label(this, cx - 280, 212, world.name, { size: 60, color: hex, origin: [0, 0.5] });
     label(this, cx, 350, world.description, { size: 36, bold: false, wrap: 900, lineSpacing: 6 });
     label(this, cx - 450, 455, 'Misiones', { size: 44, origin: [0, 0.5] });
+    // Cuánto se ha recuperado este mundo.
+    const pct = Math.round(progress.clean * 100);
+    const bar = this.add.graphics();
+    bar.fillStyle(0xd9d2bd, 1); bar.fillRoundedRect(cx + 70, 444, 380, 26, 13);
+    if (pct > 0) { bar.fillStyle(theme.c.green, 1); bar.fillRoundedRect(cx + 70, 444, Math.max(26, 3.8 * pct), 26, 13); }
+    label(this, cx + 50, 457, pct >= 100 ? '¡Recuperado!' : `Recuperado: ${pct} %`, { size: 32, origin: [1, 0.5], color: theme.hex.greenDark });
     world.missions.forEach((m, i) => {
       const y = 535 + i * 84;
       this.add.circle(cx - 420, y, 30, world.color);
