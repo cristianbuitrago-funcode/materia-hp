@@ -103,10 +103,81 @@ async function main() {
     await waitScene('MissionIntro');
     await page.waitForTimeout(900);
     await shot('09-misiones');
-    await click(1520, 970); // ¡Comenzar! (aviso: llega en fase 2)
-    await page.waitForTimeout(700);
-    await expectScenes(['MissionIntro']);
-    await page.keyboard.press('Escape');
+    // ¡Comenzar! → juego de clasificación (modo Aventurero: 8 residuos).
+    await click(1520, 970);
+    await waitScene('Sorting');
+    const sorting = () => page.evaluate(() => {
+      const s = window.__ECOMISION__.scene.getScene('Sorting');
+      return { busy: s.busy, bin: s.round.current && s.round.current.bin, index: s.round.index, total: s.round.total, explain: s.explain.visible, hint: s.round.showHint };
+    });
+    const waitReady = () => page.waitForFunction(() => {
+      const s = window.__ECOMISION__.scene.getScene('Sorting');
+      return s.scene.isActive() && !s.busy && !s.explain.visible && !!s.waste;
+    }, null, { timeout: 30000 });
+    const waitIndex = (n) => page.waitForFunction((k) => window.__ECOMISION__.scene.getScene('Sorting').round.index === k, n, { timeout: 30000 });
+    const BIN_X = { white: 600, black: 1020, green: 1440 };
+    const pt = async (x, y) => { const b = await page.locator('canvas').boundingBox(); return [b.x + (x / W) * b.width, b.y + (y / H) * b.height]; };
+
+    await waitReady();
+    await shot('09b-clasificar');
+    let st = await sorting();
+    if (st.total !== 8 || st.index !== 0) throw new Error(`Ronda inesperada: ${JSON.stringify(st)}`);
+
+    // Residuo 1: error tocando una caneca equivocada → explicación → reintento arrastrando.
+    const wrong = Object.keys(BIN_X).find((b) => b !== st.bin);
+    await click(BIN_X[wrong], 760);
+    await page.waitForFunction(() => window.__ECOMISION__.scene.getScene('Sorting').explain.visible, null, { timeout: 30000 });
+    await page.waitForTimeout(500);
+    await shot('09c-explicacion');
+    st = await sorting();
+    if (st.index !== 0) throw new Error('Un error no debe avanzar al siguiente residuo');
+    await click(BIN_X[st.bin], 1000); // con la explicación abierta las canecas no responden
+    await page.waitForTimeout(300);
+    if (!(await sorting()).explain) throw new Error('La explicación se cerró sin pulsar su botón');
+    await page.keyboard.press('Enter'); // "Intentar otra vez"
+    await waitReady();
+    const from = await pt(1020, 335), to = await pt(BIN_X[st.bin], 700);
+    await page.mouse.move(...from);
+    await page.mouse.down();
+    await page.mouse.move((from[0] + to[0]) / 2, (from[1] + to[1]) / 2, { steps: 6 });
+    await page.mouse.move(...to, { steps: 6 });
+    await page.mouse.up();
+    await waitIndex(1);
+    console.log('  ✓     error + explicación + arrastre correcto');
+
+    // Soltar el residuo fuera de las canecas lo devuelve a su sitio sin contar como intento.
+    await waitReady();
+    await page.mouse.move(...from);
+    await page.mouse.down();
+    await page.mouse.move(...(await pt(1700, 400)), { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(600);
+    st = await sorting();
+    if (st.index !== 1 || st.explain) throw new Error('Soltar fuera de las canecas no debe contar');
+
+    // Residuo 2: teclas 1, 2, 3. Residuo 3: Tab hasta la caneca + Enter. Resto: tocar la caneca.
+    await page.keyboard.press(String(Object.keys(BIN_X).indexOf(st.bin) + 1));
+    await waitIndex(2);
+    await waitReady();
+    st = await sorting();
+    for (let i = 0; i < 3 + Object.keys(BIN_X).indexOf(st.bin); i++) await page.keyboard.press('Tab'); // atrás, ajustes, canecas…
+    await page.keyboard.press('Enter');
+    await waitIndex(3);
+    console.log('  ✓     teclado: atajos numéricos y Tab + Enter');
+    for (let i = 3; i < 8; i++) {
+      await waitReady();
+      st = await sorting();
+      await click(BIN_X[st.bin], 760);
+      await waitIndex(i + 1);
+    }
+    await waitScene('Results');
+    await page.waitForTimeout(1800);
+    await shot('09d-resultados');
+    const prog = await page.evaluate(() => JSON.parse(localStorage.getItem('ecomision.save.v1')).progress);
+    const want = { experience: 85, ecoCoins: 20, roundsPlayed: 1, correctAnswers: 8, incorrectAnswers: 1 };
+    for (const [k, v] of Object.entries(want)) if (prog[k] !== v) throw new Error(`Progreso guardado: ${k}=${prog[k]}, se esperaba ${v}`);
+    if (prog.learnedWasteTypes.length !== 8) throw new Error('No se guardaron los 8 residuos aprendidos');
+    await click(W / 2 + 190 - 300, 970); // Mapa
     await waitScene('WorldMap');
 
     // Barra de secciones → pantalla "en construcción" → volver.

@@ -63,6 +63,20 @@ class AudioManager {
       case 'pop': this.tone(420, t, 0.12, { type: 'sine', vol: 0.2, to: 880 }); break;
       case 'locked': this.tone(200, t, 0.18, { type: 'square', vol: 0.07, to: 140 }); break;
       case 'talk': this.tone(520 + Math.random() * 240, t, 0.05, { type: 'triangle', vol: 0.05 }); break;
+      case 'pick': this.tone(500, t, 0.07, { type: 'sine', vol: 0.14, to: 700 }); break;
+      case 'drop': this.tone(300, t, 0.12, { type: 'sine', vol: 0.18, to: 160 }); break;
+      // Error suave: dos notas que bajan, sin sonar a castigo.
+      case 'oops':
+        this.tone(392, t, 0.14, { type: 'triangle', vol: 0.13 });
+        this.tone(330, t + 0.13, 0.2, { type: 'triangle', vol: 0.13 });
+        break;
+      case 'coin':
+        this.tone(988, t, 0.08, { type: 'square', vol: 0.06 });
+        this.tone(1319, t + 0.07, 0.18, { type: 'square', vol: 0.06 });
+        break;
+      case 'fanfare':
+        ['C5', 'E5', 'G5', 'C6', 'G5', 'C6'].forEach((n, i) => this.tone(freq(n), t + i * 0.13, i === 5 ? 0.6 : 0.2, { type: 'triangle', vol: 0.17 }));
+        break;
       case 'success':
         ['C5', 'E5', 'G5', 'C6'].forEach((n, i) => this.tone(freq(n), t + i * 0.09, 0.22, { type: 'triangle', vol: 0.16 }));
         break;

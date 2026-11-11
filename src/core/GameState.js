@@ -21,8 +21,17 @@ export function defaultState() {
       ecoCoins: 0,
       unlockedWorlds: [FIRST_WORLD],
       completedMissions: [],
+      roundsPlayed: 0,
+      correctAnswers: 0,
+      incorrectAnswers: 0,
+      learnedWasteTypes: [],
     },
   };
+}
+
+export const XP_PER_LEVEL = 100;
+export function levelForXp(xp) {
+  return 1 + Math.floor(Math.max(0, xp) / XP_PER_LEVEL);
 }
 
 export class MemoryStorage {
@@ -63,6 +72,11 @@ export class GameState {
       base.settings = { ...base.settings, ...(saved.settings || {}) };
       base.storySeen = !!saved.storySeen;
       base.progress = { ...base.progress, ...(saved.progress || {}) };
+      if (!Array.isArray(base.progress.learnedWasteTypes)) base.progress.learnedWasteTypes = [];
+      for (const k of ['experience', 'ecoCoins', 'roundsPlayed', 'correctAnswers', 'incorrectAnswers']) {
+        if (!Number.isFinite(base.progress[k]) || base.progress[k] < 0) base.progress[k] = 0;
+      }
+      base.progress.level = levelForXp(base.progress.experience);
       if (!Array.isArray(base.progress.unlockedWorlds) || !base.progress.unlockedWorlds.includes(FIRST_WORLD)) {
         base.progress.unlockedWorlds = [FIRST_WORLD];
       }
@@ -114,6 +128,21 @@ export class GameState {
       this.data.progress.unlockedWorlds.push(worldId);
       this.save();
     }
+  }
+
+  // Guarda el resultado de una ronda de clasificación (resumen de SortingRound).
+  applyRoundResult(summary) {
+    const p = this.data.progress;
+    const before = p.level;
+    p.experience += summary.xp;
+    p.ecoCoins += summary.coins;
+    p.level = levelForXp(p.experience);
+    p.roundsPlayed += 1;
+    p.correctAnswers += summary.total;
+    p.incorrectAnswers += summary.mistakes;
+    for (const id of summary.learned) if (!p.learnedWasteTypes.includes(id)) p.learnedWasteTypes.push(id);
+    this.save();
+    return { leveledUp: p.level > before, level: p.level };
   }
 
   // Borra perfil y progreso; conserva los ajustes de sonido.

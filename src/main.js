@@ -10,6 +10,8 @@ import { StoryScene } from './scenes/StoryScene.js';
 import { ProfileScene } from './scenes/ProfileScene.js';
 import { WorldMapScene } from './scenes/WorldMapScene.js';
 import { MissionIntroScene } from './scenes/MissionIntroScene.js';
+import { SortingScene } from './scenes/SortingScene.js';
+import { ResultsScene } from './scenes/ResultsScene.js';
 import { SettingsScene } from './scenes/SettingsScene.js';
 import { ComingSoonScene } from './scenes/ComingSoonScene.js';
 
@@ -29,7 +31,7 @@ async function start() {
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     render: { antialias: true, roundPixels: false },
     input: { activePointers: 3 },
-    scene: [BootScene, TitleScene, StoryScene, ProfileScene, WorldMapScene, MissionIntroScene, SettingsScene, ComingSoonScene],
+    scene: [BootScene, TitleScene, StoryScene, ProfileScene, WorldMapScene, MissionIntroScene, SortingScene, ResultsScene, SettingsScene, ComingSoonScene],
   });
   window.__ECOMISION__ = game; // para pruebas automáticas y depuración
 }

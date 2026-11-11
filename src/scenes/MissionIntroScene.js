@@ -2,7 +2,7 @@
 import Phaser from 'phaser';
 import { W, H, theme } from '../config/theme.js';
 import { drawSky, addClouds, drawHills } from '../art/backgrounds.js';
-import { Button, label, panel, toast, darker } from '../ui/widgets.js';
+import { Button, label, panel, darker } from '../ui/widgets.js';
 import { Character } from '../ui/Character.js';
 import { enterScene, goTo } from '../core/Navigation.js';
 import { gameState } from '../core/GameState.js';
@@ -53,9 +53,9 @@ export class MissionIntroScene extends Phaser.Scene {
     new Button(this, cx - 300, 970, { label: 'Volver', icon: 'ic-back', width: 340, height: 116, color: theme.c.greenDark, onClick: () => goTo(this, 'WorldMap') });
     new Button(this, cx + 220, 970, {
       label: '¡Comenzar!', icon: 'ic-play', width: 520, height: 130, fontSize: 62, color: theme.c.orange,
-      // El juego de clasificación se construye en la fase 2.
-      onClick: () => toast(this, '¡Bip, bip! Estoy alistando las canecas. ¡El juego de clasificar llega muy pronto!', { who: 'reciclin', duration: 4200 }),
+      onClick: () => goTo(this, 'Sorting', { worldId: world.id }),
     });
     this.onCancel = () => goTo(this, 'WorldMap');
+    this.onDefaultAction = () => goTo(this, 'Sorting', { worldId: world.id });
   }
 }

@@ -2,6 +2,9 @@
 // texturas sencillas (nubes, hojas, destellos) por código.
 import { CHARACTER_SVG, EXPRESSIONS, avatarSVG } from './characters.js';
 import { ICON_NAMES, iconSVG, coinSVG, worldIconSVG } from './icons.js';
+import { wasteSVG, binSVG } from './wasteArt.js';
+import { WASTES } from '../game/wastes.js';
+import { BINS } from '../game/bins.js';
 import { AVATARS } from '../config/avatars.js';
 import { WORLDS } from '../config/worlds.js';
 
@@ -25,6 +28,8 @@ export function buildTextureList() {
   }
   list.push(['ic-coin', coinSVG(1.2)]);
   for (const w of WORLDS) list.push([`world-${w.id}`, worldIconSVG(w.id, 1.3)]);
+  for (const w of WASTES) list.push([`waste-${w.id}`, wasteSVG(w.id, 1.6)]);
+  for (const b of BINS) list.push([`bin-${b.id}`, binSVG(b.id, 1.3)]);
   return list;
 }
 
