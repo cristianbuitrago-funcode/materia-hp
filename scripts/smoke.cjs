@@ -214,7 +214,7 @@ async function main() {
     await shot('09f-mapa-avance');
 
     // Barra de secciones → pantalla "en construcción" → volver.
-    await click(W / 2, H - 86);
+    await click(W / 2 + 2 * 358, H - 86); // Adultos (fase 7)
     await waitScene('ComingSoon');
     await page.waitForTimeout(500);
     await shot('10-seccion-futura');
@@ -256,7 +256,7 @@ async function main() {
     await page.evaluate(() => localStorage.setItem('ecomision.save.v1', JSON.stringify({
       version: 1, settings: { music: false, sfx: false }, storySeen: true,
       profile: { nickname: 'Tortuga Audaz', ageMode: 'adventurer', avatar: 'rana' },
-      progress: { unlockedWorlds: ['city', 'forest', 'ocean'], missionProgress: { 'ocean-1': { stars: 2, plays: 1 }, 'ocean-2': { stars: 3, plays: 1 } } },
+      progress: { ecoCoins: 40, learnedWasteTypes: ['botella', 'lata', 'banano'], unlockedWorlds: ['city', 'forest', 'ocean'], missionProgress: { 'ocean-1': { stars: 2, plays: 1 }, 'ocean-2': { stars: 3, plays: 1 } } },
     })));
     await page.reload();
     await waitScene('Title');
@@ -338,6 +338,76 @@ async function main() {
     const timer = await page.evaluate(() => { const s = window.__ECOMISION__.scene.getScene('Sorting'); return { timed: s.setup.timed, left: s.timeLeft, total: s.round.total, clean: s.env.clean }; });
     if (!timer.timed || !(timer.left > timer.total * 7 - 5 && timer.left <= timer.total * 7) || timer.clean !== 1) throw new Error(`Contrarreloj: ${JSON.stringify(timer)}`);
     await shot('19-contrarreloj');
+
+    // ---- Recompensas: insignias ganadas, tienda, álbum y perfil.
+    save = await page.evaluate(() => JSON.parse(localStorage.getItem('ecomision.save.v1')));
+    if (JSON.stringify(save.rewards.unlockedBadges) !== '["first","ocean"]') throw new Error(`Insignias: ${save.rewards.unlockedBadges}`);
+    if (save.progress.ecoCoins !== 69) throw new Error(`Monedas antes de la tienda: ${save.progress.ecoCoins}`);
+    await page.keyboard.press('Escape');
+    await waitScene('MissionIntro');
+    await page.keyboard.press('Escape');
+    await waitScene('WorldMap');
+    const NAV = (n) => [W / 2 + (n - 3) * 358, H - 86]; // 1 Álbum, 2 Tienda, 3 Insignias, 4 Perfil
+    const CARD = (i) => [740 + (i % 4) * 320, 510 + Math.floor(i / 4) * 350];
+    const readSave = () => page.evaluate(() => JSON.parse(localStorage.getItem('ecomision.save.v1')));
+
+    await click(...NAV(2));
+    await waitScene('Shop');
+    await page.waitForTimeout(500);
+    await shot('20-tienda-personajes');
+    // Tortuga (30 monedas + insignia del océano): primer toque pide confirmar, el segundo compra y la estrena.
+    await click(...CARD(5));
+    await page.waitForTimeout(300);
+    if ((await readSave()).progress.ecoCoins !== 69) throw new Error('Un solo toque no debe comprar');
+    await click(...CARD(5));
+    await page.waitForTimeout(400);
+    save = await readSave();
+    if (save.progress.ecoCoins !== 39 || save.profile.avatar !== 'tortuga' || !save.rewards.unlockedCharacters.includes('tortuga')) throw new Error(`Compra de la tortuga: ${JSON.stringify(save.profile)} ${save.progress.ecoCoins}`);
+    // Búho (pide nivel 5) y mono (40 monedas, hay 39): no se compran y no gastan nada.
+    await click(...CARD(6)); await page.waitForTimeout(300); await click(...CARD(6)); await page.waitForTimeout(300);
+    await click(...CARD(4)); await page.waitForTimeout(300); await click(...CARD(4)); await page.waitForTimeout(300);
+    save = await readSave();
+    if (save.progress.ecoCoins !== 39 || save.rewards.unlockedCharacters.length !== 5) throw new Error(`Compras no permitidas: ${JSON.stringify(save.rewards)}`);
+    // Accesorios: gorra (20). Luego se quita y se vuelve a poner sin pagar otra vez.
+    await click(800 + 370, 262);
+    await page.waitForTimeout(400);
+    await click(...CARD(0)); await page.waitForTimeout(300); await click(...CARD(0)); await page.waitForTimeout(400);
+    save = await readSave();
+    if (save.progress.ecoCoins !== 19 || save.profile.accessory !== 'gorra') throw new Error(`Compra de la gorra: ${JSON.stringify(save.profile)} ${save.progress.ecoCoins}`);
+    await click(...CARD(0)); await page.waitForTimeout(300);
+    if ((await readSave()).profile.accessory !== null) throw new Error('Tocar el accesorio puesto debe quitarlo');
+    await click(...CARD(0)); await page.waitForTimeout(400);
+    save = await readSave();
+    if (save.progress.ecoCoins !== 19 || save.profile.accessory !== 'gorra') throw new Error('Volver a ponerse un accesorio no debe costar');
+    await shot('21-tienda-accesorios');
+    console.log('  ✓     tienda: confirmar, comprar, estrenar, quitar y límites de monedas y requisitos');
+    await page.keyboard.press('Escape');
+    await waitScene('WorldMap');
+    await page.waitForTimeout(500);
+    await shot('22-mapa-con-estilo');
+
+    await click(...NAV(1));
+    await waitScene('Album');
+    await page.waitForTimeout(500);
+    await shot('23-album');
+    const album = await page.evaluate(() => { const s = window.__ECOMISION__.scene.getScene('Album'); return { learned: s.learned.length, selected: s.selected }; });
+    if (album.learned < 6 || !album.selected) throw new Error(`Álbum: ${JSON.stringify(album)}`);
+    await page.keyboard.press('Escape');
+    await waitScene('WorldMap');
+
+    await click(...NAV(3));
+    await waitScene('Badges');
+    await page.waitForTimeout(500);
+    await shot('24-insignias');
+    await page.keyboard.press('Escape');
+    await waitScene('WorldMap');
+
+    await click(...NAV(4));
+    await waitScene('PlayerProfile');
+    await page.waitForTimeout(500);
+    await shot('25-perfil');
+    await page.keyboard.press('Escape');
+    await waitScene('WorldMap');
 
     if (errors.length) throw new Error(`Errores en la consola:\n${errors.join('\n')}`);
     console.log(`\nPrueba de humo superada (${step} pantallas verificadas, 0 errores de consola).`);

@@ -8,14 +8,15 @@ import { gameState } from '../core/GameState.js';
 import { WORLDS } from '../config/worlds.js';
 import { getAgeMode } from '../config/ageModes.js';
 import { audio } from '../core/AudioManager.js';
+import { makeAvatar } from '../ui/avatar.js';
 
 const NODES = { city: [300, 640], forest: [640, 400], ocean: [980, 660], mountain: [1320, 410], future: [1650, 640] };
 
 const SECTIONS = [
-  { label: 'Álbum', icon: 'ic-book', color: 0x26a69a, phase: 5, text: 'Aquí guardarás todos los residuos que aprendas, con datos curiosos.' },
-  { label: 'Tienda', icon: 'ic-shop', color: theme.c.orange, phase: 5, text: 'Aquí cambiarás tus monedas ecológicas por personajes y accesorios.' },
-  { label: 'Insignias', icon: 'ic-medal', color: 0xf9a825, phase: 5, text: 'Aquí brillarán las insignias que ganes como guardián.' },
-  { label: 'Perfil', icon: 'ic-user', color: theme.c.blue, phase: 5, text: 'Aquí verás tu nivel, tu experiencia y todo lo que has logrado.' },
+  { label: 'Álbum', icon: 'ic-book', color: 0x26a69a, scene: 'Album' },
+  { label: 'Tienda', icon: 'ic-shop', color: theme.c.orange, scene: 'Shop' },
+  { label: 'Insignias', icon: 'ic-medal', color: 0xf9a825, scene: 'Badges' },
+  { label: 'Perfil', icon: 'ic-user', color: theme.c.blue, scene: 'PlayerProfile' },
   { label: 'Adultos', icon: 'ic-family', color: theme.c.purple, phase: 7, text: 'Aquí los padres y docentes verán lo que cada guardián ha aprendido.', title: 'Padres y docentes' },
 ];
 
@@ -86,7 +87,7 @@ export class WorldMapScene extends Phaser.Scene {
     // El avatar del jugador marca el mundo más avanzado que tiene abierto.
     const last = WORLDS.filter((w) => gameState.isWorldUnlocked(w.id)).pop();
     if (last.id === world.id) {
-      const me = this.add.image(x + 96, y - 150, `avatar-${gameState.profile.avatar}`).setDisplaySize(120, 120);
+      const me = makeAvatar(this, x + 96, y - 150, 120, gameState.profile, { withFrame: false });
       this.tweens.add({ targets: me, y: y - 176, duration: 520, yoyo: true, repeat: -1, ease: 'Quad.out' });
     }
   }
@@ -101,12 +102,13 @@ export class WorldMapScene extends Phaser.Scene {
     const p = gameState.profile, mode = getAgeMode(p.ageMode);
     const card = this.add.container(310, 100);
     card.add(panel(this, 0, 0, 540, 140, { radius: 70, strokeWidth: 5 }));
-    card.add(this.add.circle(-200, 0, 62, mode.color));
-    card.add(this.add.image(-200, 0, `avatar-${p.avatar}`).setDisplaySize(112, 112));
+    card.add(makeAvatar(this, -200, 0, 124, p));
     card.add(label(this, -120, -26, p.nickname, { size: 44, origin: [0, 0.5] }));
     card.add(label(this, -120, 28, mode.name, { size: 32, origin: [0, 0.5], color: theme.hex.grey, bold: false }));
 
     chip(this, W - 620, 100, 'ic-star', `Nivel ${gameState.progress.level}`, { width: 300, tint: 0xf9a825 });
+    // Tocar la tarjeta del jugador abre su perfil.
+    card.setSize(540, 140).setInteractive({ useHandCursor: true }).on('pointerup', () => goTo(this, 'PlayerProfile'));
     chip(this, W - 340, 100, 'ic-coin', gameState.progress.ecoCoins, { width: 220 });
     new Button(this, W - 110, 100, { icon: 'ic-gear', width: 120, height: 120, radius: 60, color: theme.c.greenDark, onClick: () => openOverlay(this, 'Settings') });
   }
@@ -116,7 +118,8 @@ export class WorldMapScene extends Phaser.Scene {
     SECTIONS.forEach((s, i) => {
       new Button(this, W / 2 - total / 2 + bw / 2 + i * (bw + gap), H - 86, {
         label: s.label, icon: s.icon, width: bw, height: 104, fontSize: 42, color: s.color,
-        onClick: () => goTo(this, 'ComingSoon', { title: s.title || s.label, icon: s.icon, phase: s.phase, text: s.text, from: 'WorldMap' }),
+        onClick: () => (s.scene ? goTo(this, s.scene)
+          : goTo(this, 'ComingSoon', { title: s.title || s.label, icon: s.icon, phase: s.phase, text: s.text, from: 'WorldMap' })),
       });
     });
   }

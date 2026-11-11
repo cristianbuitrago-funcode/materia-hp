@@ -16,7 +16,7 @@ describe('GameState', () => {
     const a = new GameState(storage).load();
     a.createProfile({ nickname: '  Jaguar Veloz ', ageMode: 'explorer', avatar: 'rana' });
     const b = new GameState(storage).load();
-    expect(b.profile).toEqual({ nickname: 'Jaguar Veloz', ageMode: 'explorer', avatar: 'rana', guest: true });
+    expect(b.profile).toEqual({ nickname: 'Jaguar Veloz', ageMode: 'explorer', avatar: 'rana', accessory: null, frame: 'f-crema', guest: true });
   });
 
   it('rechaza perfiles no válidos', () => {
@@ -30,7 +30,7 @@ describe('GameState', () => {
   it('solo guarda apodo, modo de edad y avatar (sin datos personales)', () => {
     const s = fresh();
     s.createProfile({ nickname: 'Rana Feliz', ageMode: 'expert', avatar: 'oso', email: 'x@y.z', birthday: '2015-01-01' });
-    expect(Object.keys(s.profile).sort()).toEqual(['ageMode', 'avatar', 'guest', 'nickname']);
+    expect(Object.keys(s.profile).sort()).toEqual(['accessory', 'ageMode', 'avatar', 'frame', 'guest', 'nickname']);
   });
 
   it('guarda los ajustes y rechaza ajustes desconocidos', () => {

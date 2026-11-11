@@ -8,6 +8,18 @@ import { isValidAvatar } from '../config/avatars.js';
 import { MISSIONS_PER_WORLD, missionId, parseMissionId } from '../config/missions.js';
 import { pushRecent, updateTrouble, RECENT_WINDOW, TROUBLE_MAX } from '../game/Difficulty.js';
 import { getWaste } from '../game/wastes.js';
+import { earnedBadges, getBadge } from '../game/rewards.js';
+import { getItem, purchaseCheck, listFor, FREE_ITEMS, DEFAULT_FRAME } from '../game/shop.js';
+
+function defaultRewards() {
+  const free = FREE_ITEMS.map(getItem);
+  return {
+    unlockedBadges: [],
+    unlockedCharacters: free.filter((i) => i.type === 'character').map((i) => i.id),
+    unlockedAccessories: [],
+    unlockedFrames: free.filter((i) => i.type === 'frame').map((i) => i.id),
+  };
+}
 
 export const SAVE_VERSION = 1;
 const STORAGE_KEY = 'ecomision.save.v1';
@@ -17,7 +29,8 @@ export function defaultState() {
     version: SAVE_VERSION,
     settings: { music: true, sfx: true },
     storySeen: false,
-    profile: null, // { nickname, ageMode, avatar, guest }
+    profile: null, // { nickname, ageMode, avatar, accessory, frame, guest }
+    rewards: defaultRewards(),
     progress: {
       level: 1,
       experience: 0,
@@ -105,9 +118,24 @@ export class GameState {
       if (!Array.isArray(base.progress.unlockedWorlds) || !base.progress.unlockedWorlds.includes(FIRST_WORLD)) {
         base.progress.unlockedWorlds = [FIRST_WORLD];
       }
+      // Recompensas: solo se conservan elementos que existen; lo gratuito siempre está.
+      const r = saved.rewards && typeof saved.rewards === 'object' ? saved.rewards : {};
+      for (const key of ['unlockedCharacters', 'unlockedAccessories', 'unlockedFrames']) {
+        const kept = (Array.isArray(r[key]) ? r[key] : []).filter((id) => { const it = getItem(id); return it && listFor(it.type) === key; });
+        base.rewards[key] = [...new Set([...base.rewards[key], ...kept])];
+      }
+      base.rewards.unlockedBadges = [...new Set((Array.isArray(r.unlockedBadges) ? r.unlockedBadges : []).filter(getBadge))];
       const p = saved.profile;
       if (p && typeof p.nickname === 'string' && getAgeMode(p.ageMode) && isValidAvatar(p.avatar)) {
-        base.profile = { nickname: p.nickname, ageMode: p.ageMode, avatar: p.avatar, guest: p.guest !== false };
+        const rw = base.rewards;
+        base.profile = {
+          nickname: p.nickname, ageMode: p.ageMode,
+          // Solo se puede llevar puesto lo que se tiene.
+          avatar: rw.unlockedCharacters.includes(p.avatar) ? p.avatar : rw.unlockedCharacters[0],
+          accessory: rw.unlockedAccessories.includes(p.accessory) ? p.accessory : null,
+          frame: rw.unlockedFrames.includes(p.frame) ? p.frame : DEFAULT_FRAME,
+          guest: p.guest !== false,
+        };
       }
     }
     this.data = base;
@@ -119,6 +147,7 @@ export class GameState {
   get settings() { return this.data.settings; }
   get profile() { return this.data.profile; }
   get progress() { return this.data.progress; }
+  get rewards() { return this.data.rewards; }
   get hasProfile() { return !!this.data.profile; }
 
   setSetting(key, value) {
@@ -137,8 +166,8 @@ export class GameState {
     const nick = String(nickname || '').trim().slice(0, 24);
     if (!nick) throw new Error('El apodo no puede estar vacío');
     if (!getAgeMode(ageMode)) throw new Error(`Modo de edad no válido: ${ageMode}`);
-    if (!isValidAvatar(avatar)) throw new Error(`Avatar no válido: ${avatar}`);
-    this.data.profile = { nickname: nick, ageMode, avatar, guest: true };
+    if (!isValidAvatar(avatar) || !this.data.rewards.unlockedCharacters.includes(avatar)) throw new Error(`Avatar no válido: ${avatar}`);
+    this.data.profile = { nickname: nick, ageMode, avatar, accessory: null, frame: DEFAULT_FRAME, guest: true };
     this.save();
     return this.data.profile;
   }
@@ -204,8 +233,55 @@ export class GameState {
         unlockedWorld = next.id;
       }
     }
+    // Insignias nuevas ganadas con este resultado.
+    const have = this.data.rewards.unlockedBadges;
+    const newBadges = earnedBadges(p).filter((id) => !have.includes(id));
+    have.push(...newBadges);
     this.save();
-    return { leveledUp: p.level > before, level: p.level, firstTime, worldCompleted, unlockedWorld };
+    return { leveledUp: p.level > before, level: p.level, firstTime, worldCompleted, unlockedWorld, newBadges };
+  }
+
+  // ---- Tienda y personalización
+
+  owns(itemId) {
+    const item = getItem(itemId);
+    return !!item && this.data.rewards[listFor(item.type)].includes(itemId);
+  }
+
+  wallet() {
+    const r = this.data.rewards;
+    return {
+      coins: this.data.progress.ecoCoins, level: this.data.progress.level, badges: r.unlockedBadges,
+      owned: [...r.unlockedCharacters, ...r.unlockedAccessories, ...r.unlockedFrames],
+    };
+  }
+
+  // Compra con monedas ecológicas. Devuelve { ok } o el motivo por el que no se puede.
+  buyItem(itemId) {
+    const item = getItem(itemId);
+    const check = purchaseCheck(item, this.wallet());
+    if (!check.ok) return check;
+    this.data.progress.ecoCoins -= item.price;
+    this.data.rewards[listFor(item.type)].push(item.id);
+    this.save();
+    return { ok: true, item };
+  }
+
+  // Se pone un elemento que ya es suyo. Tocar el accesorio puesto lo quita.
+  equipItem(itemId) {
+    const item = getItem(itemId);
+    if (!this.data.profile || !this.owns(itemId)) throw new Error(`No se puede usar: ${itemId}`);
+    const p = this.data.profile;
+    if (item.type === 'character') p.avatar = item.id;
+    else if (item.type === 'frame') p.frame = item.id;
+    else p.accessory = p.accessory === item.id ? null : item.id;
+    this.save();
+    return p;
+  }
+
+  isEquipped(itemId) {
+    const p = this.data.profile;
+    return !!p && (p.avatar === itemId || p.accessory === itemId || p.frame === itemId);
   }
 
   // Borra perfil y progreso; conserva los ajustes de sonido.

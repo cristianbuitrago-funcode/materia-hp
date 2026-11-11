@@ -4,9 +4,10 @@ Videojuego educativo web para niños de 5 a 12 años. Enseña a identificar, sep
 disponer correctamente los residuos (código de colores de Colombia: caneca **blanca**,
 **negra** y **verde**) a través de una aventura por cinco mundos.
 
-> **Estado: FASES 1 a 4 terminadas** (identidad visual, navegación, juego de clasificación,
-> los cinco mundos, y las 20 misiones con dificultad adaptativa). La tienda, el álbum, las
-> insignias y Firebase llegan en las fases 5 a 8. Ver [Plan por fases](#plan-de-desarrollo-por-fases).
+> **Estado: FASES 1 a 5 terminadas** (identidad visual, navegación, juego de clasificación,
+> los cinco mundos, las 20 misiones con dificultad adaptativa, y recompensas: insignias, tienda,
+> álbum y perfil). Firebase, el panel de adultos y la accesibilidad final llegan en las fases 6 a 8.
+> Ver [Plan por fases](#plan-de-desarrollo-por-fases).
 
 ## Cómo ejecutarlo
 
@@ -36,7 +37,7 @@ npm run test:smoke   # recorre el juego compilado en un navegador real (requiere
 | Gestión de mundos | `src/config/worlds.js` (datos), `src/worlds/` (escenarios y limpieza visual), `WorldMapScene` |
 | Sistema de misiones | `src/config/missions.js` (plan), `src/game/questions.js`, `src/game/Difficulty.js`, `MissionIntroScene`, `ChallengeScene` |
 | Clasificación de residuos | `src/game/` (catálogo, canecas, `SortingEngine`), `SortingScene`, `ResultsScene` |
-| Sistema de recompensas | experiencia, monedas, nivel y estrellas en `SortingEngine` y `GameState` — insignias, tienda y álbum en fase 5 |
+| Sistema de recompensas | `src/game/rewards.js` (insignias y títulos), `src/game/shop.js` (tienda), `SortingEngine` y `GameState` (experiencia, monedas, compras), escenas `Album`, `Shop`, `Badges`, `PlayerProfile` |
 | Gestión de usuarios | `ProfileScene`, `GameState.createProfile` — cuentas de adultos en fase 6 |
 | Integración Firebase | fase 6 (`src/firebase/`) |
 | Recursos gráficos y sonoros | `src/art/`, `src/core/AudioManager.js` |
@@ -66,7 +67,7 @@ Boot ─► Inicio ─┬─► Historia ─► Perfil (edad ─► avatar y apo
                 │                                                   │
                 └─(si ya hay partida: "¡Continuar!")────────────────┤
                                                                     ├─► Lista de misiones ─► Misión (clasificar | ¿está bien? | preguntas) ─► Resultados ─► siguiente misión
-Ajustes (ventana desde Inicio y Mapa)                               └─► Álbum · Tienda · Insignias · Perfil · Adultos  [fases 5 y 7]
+Ajustes (ventana desde Inicio y Mapa)                               └─► Álbum · Tienda · Insignias · Perfil · Adultos [fase 7]
 Inicio ─► Ingresar [fase 6] · Padres y docentes [fase 7]
 ```
 
@@ -127,6 +128,21 @@ siguiente. Hay tres tipos de reto (`src/config/missions.js`):
 - **Repaso:** los residuos en los que el jugador se equivoca vuelven a salir en las rondas siguientes
   (máximo dos por ronda) hasta que los acierta a la primera.
 
+## Recompensas (hecho)
+
+- **Monedas ecológicas y experiencia:** se ganan al responder y al terminar misiones; cada 100 de
+  experiencia se sube de nivel, y cada nivel tiene un título (de «Aprendiz» a «Leyenda del planeta»).
+- **Insignias (10):** las cinco del diseño, una por mundo recuperado (Héroe del Reciclaje, Guardián
+  del Bosque, Protector del Océano, Maestro de la Separación, Salvavidas del Planeta), más cinco de
+  participación, esfuerzo y aprendizaje (por ejemplo «Nunca me Rindo»: jugar 10 misiones con las
+  estrellas que sea). Cada una dice exactamente cómo se consigue.
+- **Tienda:** 3 personajes nuevos, 5 accesorios y 4 fondos de retrato. Se pagan con monedas
+  ecológicas y algunos piden además un nivel o una insignia. Comprar exige un segundo toque de
+  confirmación. **No hay dinero real, compras dentro del juego, apuestas ni premios al azar.**
+- **Álbum ecológico:** los 25 residuos por caneca; los aprendidos muestran su caneca, la explicación
+  y un dato curioso, y los que faltan aparecen como siluetas.
+- **Perfil:** retrato con lo que el jugador lleva puesto, nivel, experiencia y sus logros.
+
 ## Privacidad infantil
 
 - El modo de prueba no pide ni guarda datos personales: solo rango de edad, avatar y un
@@ -141,7 +157,7 @@ players/{playerId}        parentId, nickname, ageRange, avatar, level, experienc
                           completedMissions, unlockedWorlds
 playerProgress/{playerId} parentId, worldProgress, missionProgress, correctAnswers,
                           incorrectAnswers, learnedWasteTypes
-rewards/{playerId}        parentId, unlockedBadges, unlockedCharacters, unlockedAccessories
+rewards/{playerId}        parentId, unlockedBadges, unlockedCharacters, unlockedAccessories, unlockedFrames
 ```
 
 Reglas previstas: un adulto solo lee y escribe `users/{su uid}` y los documentos cuyo
@@ -157,7 +173,7 @@ las gestiona Firebase Authentication; en el cliente solo va la configuración p�
 | 2 | Motor del juego y mecánica Sorting Game (arrastrar, tocar, teclado) | ✅ Terminada |
 | 3 | Los cinco mundos con arte, música y elementos propios | ✅ Terminada |
 | 4 | Misiones, niveles y dificultad adaptativa | ✅ Terminada |
-| 5 | Monedas, experiencia, insignias, tienda, álbum, perfil | Pendiente |
+| 5 | Monedas, experiencia, insignias, tienda, álbum, perfil | ✅ Terminada |
 | 6 | Firebase Authentication, Firestore, reglas de seguridad, Hosting | Pendiente |
 | 7 | Panel de padres y docentes | Pendiente |
 | 8 | Accesibilidad (narración por voz, subtítulos), pruebas, seguridad y publicación | Pendiente |

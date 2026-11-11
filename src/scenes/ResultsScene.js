@@ -4,6 +4,7 @@ import { W, H, theme } from '../config/theme.js';
 import { drawMeadow } from '../art/backgrounds.js';
 import { Button, label, panel, toast } from '../ui/widgets.js';
 import { getWorld } from '../config/worlds.js';
+import { getBadge } from '../game/rewards.js';
 import { MISSIONS_PER_WORLD } from '../config/missions.js';
 import { startMission } from '../game/missionUi.js';
 import { Character } from '../ui/Character.js';
@@ -76,9 +77,12 @@ export class ResultsScene extends Phaser.Scene {
     this.onDefaultAction = forward;
 
     this.time.delayedCall(300, () => audio.sfx('fanfare'));
+    // Avisos, uno tras otro: insignias nuevas y mundo abierto.
+    const news = (data.newBadges || []).map((id) => `¡Nueva insignia: ${getBadge(id).name}!`);
     const opened = data.unlockedWorld && getWorld(data.unlockedWorld);
-    if (opened) this.time.delayedCall(1800, () => toast(this, `¡Abriste un mundo nuevo: ${opened.name}!`, { who: 'eco', duration: 4500 }));
-    else if (data.worldCompleted) this.time.delayedCall(1800, () => toast(this, '¡Salvaste el planeta! Eres un verdadero guardián.', { who: 'eco', duration: 6000 }));
+    if (opened) news.push(`¡Abriste un mundo nuevo: ${opened.name}!`);
+    else if (data.worldCompleted) news.push('¡Salvaste el planeta! Eres un verdadero guardián.');
+    news.forEach((text, i) => this.time.delayedCall(1800 + i * 4200, () => { audio.sfx('success'); toast(this, text, { who: 'eco', duration: 3800 }); }));
   }
 
   prize(x, y, icon, text, tint = null) {

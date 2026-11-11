@@ -7,7 +7,7 @@ import { Button, label, panel } from '../ui/widgets.js';
 import { enterScene, goTo } from '../core/Navigation.js';
 import { gameState } from '../core/GameState.js';
 import { AGE_MODES } from '../config/ageModes.js';
-import { AVATARS, randomNickname } from '../config/avatars.js';
+import { FREE_AVATARS as AVATARS, randomNickname } from '../config/avatars.js';
 import { audio } from '../core/AudioManager.js';
 
 export class ProfileScene extends Phaser.Scene {

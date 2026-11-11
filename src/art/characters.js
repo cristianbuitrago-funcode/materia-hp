@@ -120,6 +120,9 @@ export function avatarSVG(kind, scale = 1) {
     oso: { c: '#8D5A3B', o: '#4E2F1C' },
     jaguar: { c: '#F6B93B', o: '#9C6A0C' },
     zorro: { c: '#FF8A3D', o: '#A84A10' },
+    mono: { c: '#8D6E63', o: '#4E342E' },
+    tortuga: { c: '#8BC34A', o: '#3F6B1B' },
+    buho: { c: '#9575CD', o: '#4A2F8A' },
   };
   const { c, o } = defs[kind];
   let back = '', front = '', eyeY = 150, gap = 46;
@@ -134,16 +137,44 @@ export function avatarSVG(kind, scale = 1) {
     back = `<circle cx="68" cy="76" r="36" fill="${c}" stroke="${o}" stroke-width="7"/><circle cx="232" cy="76" r="36" fill="${c}" stroke="${o}" stroke-width="7"/>`;
     front = `<ellipse cx="150" cy="212" rx="56" ry="42" fill="#FFF3D6"/><ellipse cx="150" cy="186" rx="15" ry="10" fill="#D9576B"/>` +
       [[86, 96], [150, 78], [214, 96], [60, 170], [240, 170]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="10" fill="none" stroke="#6B3E07" stroke-width="7"/>`).join('');
+  } else if (kind === 'mono') {
+    back = `<circle cx="38" cy="160" r="36" fill="${c}" stroke="${o}" stroke-width="7"/><circle cx="262" cy="160" r="36" fill="${c}" stroke="${o}" stroke-width="7"/><circle cx="38" cy="160" r="18" fill="#F3DDB8"/><circle cx="262" cy="160" r="18" fill="#F3DDB8"/>`;
+    front = `<path d="M150 96 Q 92 92 84 150 Q 60 236 150 256 Q 240 236 216 150 Q 208 92 150 96 Z" fill="#F3DDB8"/><ellipse cx="150" cy="190" rx="10" ry="6" fill="#5D4037"/><path d="M130 62 Q150 40 170 62" fill="none" stroke="${o}" stroke-width="7" stroke-linecap="round"/>`;
+  } else if (kind === 'tortuga') {
+    front = `<circle cx="78" cy="198" r="16" fill="#FF9AA2" opacity="0.7"/><circle cx="222" cy="198" r="16" fill="#FF9AA2" opacity="0.7"/>` +
+      [[150, 74], [104, 92], [196, 92]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="22" ry="15" fill="#689F38" opacity="0.8"/>`).join('');
+  } else if (kind === 'buho') {
+    back = `<path d="M56 110 L62 34 L124 76 Z" fill="${c}" stroke="${o}" stroke-width="7" stroke-linejoin="round"/><path d="M244 110 L238 34 L176 76 Z" fill="${c}" stroke="${o}" stroke-width="7" stroke-linejoin="round"/>`;
+    front = `<circle cx="104" cy="150" r="46" fill="#EDE7F6"/><circle cx="196" cy="150" r="46" fill="#EDE7F6"/><ellipse cx="150" cy="232" rx="56" ry="30" fill="#D1C4E9"/><path d="M134 178 L166 178 L150 204 Z" fill="#FF9800" stroke="#B26A00" stroke-width="5" stroke-linejoin="round"/>`;
   } else {
     back = `<path d="M40 130 L52 22 L128 84 Z" fill="${c}" stroke="${o}" stroke-width="7" stroke-linejoin="round"/><path d="M260 130 L248 22 L172 84 Z" fill="${c}" stroke="${o}" stroke-width="7" stroke-linejoin="round"/>`;
     front = `<path d="M44 190 Q 96 168 150 214 Q 204 168 256 190 Q 236 262 150 268 Q 64 262 44 190 Z" fill="#FFF6EC"/><ellipse cx="150" cy="200" rx="15" ry="11" fill="${INK}"/>`;
   }
-  const mouthY = kind === 'rana' ? 178 : 214;
+  const mouthY = kind === 'rana' ? 178 : kind === 'buho' ? 222 : 214;
   return svgDoc(300, 300, `
 ${back}
 <circle cx="150" cy="162" r="112" fill="${c}" stroke="${o}" stroke-width="8"/>
 ${front}
 ${face({ cx: 150, ey: eyeY, my: mouthY, gap, r: 22, expr: 'happy' }).replace(/stroke-width="6"/g, 'stroke-width="5"')}`, scale);
+}
+
+// Accesorios: se dibujan encima del avatar, en su mismo recuadro de 300x300.
+// La rana tiene los ojos más arriba, así que las gafas se le suben.
+export function accessorySVG(kind, avatar = 'oso', scale = 1) {
+  const L = `stroke="${INK}" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"`;
+  const art = {
+    gorra: `<path d="M62 92 Q 66 22 150 22 Q 234 22 238 92 Z" fill="#E53935" ${L}/><path d="M150 22 V92" stroke="#B71C1C" stroke-width="5"/>
+<path d="M56 92 Q 150 70 244 92 Q 286 100 292 122 Q 236 104 150 106 Q 92 106 56 92 Z" fill="#C62828" ${L}/><circle cx="150" cy="24" r="10" fill="#FFD23F" ${L}/>`,
+    'mono-lazo': `<path d="M150 262 L96 236 V290 Z" fill="#E53935" ${L}/><path d="M150 262 L204 236 V290 Z" fill="#E53935" ${L}/><circle cx="150" cy="262" r="14" fill="#FFD23F" ${L}/>`,
+    gafas: `<g transform="translate(0 ${avatar === 'rana' ? -58 : 0})"><rect x="66" y="126" width="76" height="52" rx="20" fill="#17324D" ${L}/><rect x="158" y="126" width="76" height="52" rx="20" fill="#17324D" ${L}/>
+<path d="M142 146 H158 M66 146 L44 138 M234 146 L256 138" ${L} fill="none"/><path d="M80 140 l18 -8 M172 140 l18 -8" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity="0.7"/></g>`,
+    corona: [[62, 96, -50], [96, 64, -26], [150, 50, 0], [204, 64, 26], [238, 96, 50]].map(([x, y, a], i) =>
+      `<path d="M0 0 C -22 -18 -22 -48 0 -66 C 22 -48 22 -18 0 0 Z" fill="${i % 2 ? '#8BE04E' : '#3FAE6A'}" ${L} transform="translate(${x} ${y}) rotate(${a})"/>`).join('') +
+      `<circle cx="150" cy="54" r="11" fill="#FFD23F" ${L}/>`,
+    capa: `<path d="M40 226 Q 4 262 10 300 H110 Q 84 268 92 240 Z" fill="#2BB673" ${L}/><path d="M260 226 Q 296 262 290 300 H190 Q 216 268 208 240 Z" fill="#2BB673" ${L}/>
+<path d="M150 250 l8 16 18 2 -13 12 4 18 -17 -9 -17 9 4 -18 -13 -12 18 -2 z" fill="#FFD23F" ${L}/>`,
+  };
+  return svgDoc(300, 300, art[kind], scale);
 }
 
 export const CHARACTER_SVG = { eco: ecoSVG, reciclin: reciclinSVG, contaminator: contaminatorSVG };
