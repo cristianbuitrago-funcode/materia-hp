@@ -3,15 +3,13 @@
 import Phaser from 'phaser';
 import { W, H, theme } from '../config/theme.js';
 import { Button, label, panel, chip } from '../ui/widgets.js';
-import { Character } from '../ui/Character.js';
-import { enterScene, goTo, openOverlay } from '../core/Navigation.js';
-import { gameState, CLEAN_PER_ROUND } from '../core/GameState.js';
-import { buildWorld } from '../worlds/index.js';
+import { enterScene, goTo } from '../core/Navigation.js';
 import { audio } from '../core/AudioManager.js';
-import { getWorld } from '../config/worlds.js';
+import { buildWorld } from '../worlds/index.js';
 import { BINS, getBin } from '../game/bins.js';
 import { BinTarget } from '../game/BinTarget.js';
-import { SortingRound, buildRound, ROUND_RULES } from '../game/SortingEngine.js';
+import { SortingRound, buildRound } from '../game/SortingEngine.js';
+import { prepareMission, openingLine, createHud, createGuide, createSparks, floatReward, finishMission } from '../game/missionUi.js';
 
 const HOME = { x: 1020, y: 335 };
 const BIN_X = [600, 1020, 1440];
@@ -21,12 +19,17 @@ export class SortingScene extends Phaser.Scene {
   constructor() { super('Sorting'); }
 
   create(data) {
-    const world = getWorld(data.worldId);
-    if (!gameState.hasProfile || !world || !gameState.isWorldUnlocked(world.id)) { this.scene.start('WorldMap'); return; }
+    const setup = prepareMission(data);
+    if (!setup || setup.mission.kind !== 'sort') { this.scene.start('WorldMap'); return; }
     enterScene(this);
-    this.world = world;
-    const mode = gameState.profile.ageMode;
-    this.round = new SortingRound(buildRound(mode, Math.random, world.wastes), { hintAfter: ROUND_RULES[mode].hintAfter });
+    this.setup = setup;
+    this.world = setup.world;
+    const { mission, rules } = setup;
+    this.activeBins = mission.bins || BINS.map((b) => b.id);
+    this.round = new SortingRound(
+      buildRound(rules, Math.random, setup.pick),
+      { hintAfter: rules.hintAfter },
+    );
     this.busy = true;
     this.waste = null;
     this.nameText = null;
@@ -36,21 +39,19 @@ export class SortingScene extends Phaser.Scene {
     this.prevFocus = null;
 
     // El escenario empieza tan limpio como lo dejó el jugador y se limpia más con cada acierto.
-    this.cleanStart = gameState.worldProgress(world.id).clean;
-    this.cleanGain = Math.min(1, this.cleanStart + CLEAN_PER_ROUND) - this.cleanStart;
-    this.env = buildWorld(this, world.id, this.cleanStart);
-    audio.setTheme(world.id);
+    this.env = buildWorld(this, this.world.id, setup.cleanStart);
+    audio.setTheme(this.world.id);
     audio.startMusic();
 
-    this.addHud();
+    this.hud = createHud(this, { unit: 'Residuo', onBack: () => this.exit() });
+    this.hud.update(this.round);
     this.bins = BINS.map((bin, i) => new BinTarget(this, BIN_X[i], 800, bin, (id) => this.choose(id)));
-    this.addGuide();
+    // En misiones de dos canecas, la que no participa queda apagada.
+    for (const b of this.bins) if (!this.activeBins.includes(b.bin.id)) { b.enabled = false; b.setAlpha(0.3); }
+    this.guide = createGuide(this);
     this.addExplainPanel();
-
-    this.sparks = this.add.particles(0, 0, 'dot', {
-      speed: { min: 180, max: 520 }, angle: { min: 200, max: 340 }, gravityY: 900, lifespan: 900,
-      scale: { start: 0.9, end: 0 }, tint: [0xffd23f, 0x2bb673, 0xff8a3d, 0x5cc8f5, 0xffffff], emitting: false,
-    }).setDepth(60);
+    this.sparks = createSparks(this);
+    if (setup.timed) this.addTimer();
 
     // Atajos: teclas 1, 2 y 3 eligen la caneca blanca, negra y verde.
     this.input.keyboard.on('keydown', (e) => {
@@ -59,47 +60,31 @@ export class SortingScene extends Phaser.Scene {
     });
     this.onCancel = () => this.exit();
 
-    this.say('¡Arrastra cada residuo a su caneca! También puedes tocar la caneca.', 'happy');
+    this.say(openingLine(setup), 'happy');
     this.time.delayedCall(450, () => this.spawnWaste());
   }
 
-  addHud() {
-    new Button(this, 110, 100, { icon: 'ic-back', width: 120, height: 120, radius: 60, color: theme.c.greenDark, onClick: () => this.exit() });
-    panel(this, W / 2, 100, 760, 110, { radius: 55, strokeWidth: 5 });
-    this.progressText = label(this, W / 2, 76, '', { size: 36 });
-    this.progressBar = this.add.graphics();
-    this.coinChip = chip(this, W - 340, 100, 'ic-coin', gameState.progress.ecoCoins, { width: 220 });
-    new Button(this, W - 110, 100, { icon: 'ic-gear', width: 120, height: 120, radius: 60, color: theme.c.greenDark, onClick: () => openOverlay(this, 'Settings') });
-    this.updateHud();
-  }
-
-  updateHud() {
-    const done = this.round.index, total = this.round.total;
-    this.progressText.setText(this.round.finished ? '¡Todo clasificado!' : `Residuo ${done + 1} de ${total}`);
-    const x = W / 2 - 330, y = 108, w = 660, h = 26;
-    const g = this.progressBar;
-    g.clear();
-    g.fillStyle(0xd9d2bd, 1); g.fillRoundedRect(x, y, w, h, 13);
-    if (done > 0) { g.fillStyle(theme.c.green, 1); g.fillRoundedRect(x, y, Math.max(h, (w * done) / total), h, 13); }
-    this.coinChip.valueText.setText(String(gameState.progress.ecoCoins + this.round.coins));
-  }
-
-  addGuide() {
-    this.guide = new Character(this, 205, 1050, 'reciclin', { scale: 0.62 });
-    const b = this.add.container(225, 400);
-    const bg = panel(this, 0, 0, 410, 300, { radius: 50 });
-    bg.fillStyle(theme.c.cream, 1); bg.fillTriangle(-60, 144, 20, 144, -40, 205);
-    bg.lineStyle(6, theme.c.ink, 1); bg.lineBetween(-60, 152, -40, 205); bg.lineBetween(-40, 205, 20, 152);
-    this.bubbleText = label(this, 0, 0, '', { size: 32, wrap: 360, lineSpacing: 4 });
-    b.add([bg, this.bubbleText]);
-    this.bubble = b;
-  }
-
-  // RECICLÍN dice algo en su globo (todo lo que dice queda escrito).
   say(text, expr = 'happy') {
-    this.bubbleText.setText(text);
-    this.guide.talk(expr, 900);
-    this.tweens.add({ targets: this.bubble, scale: { from: 0.85, to: 1 }, duration: 220, ease: 'Back.out' });
+    this.guide.say(text, expr);
+  }
+
+  // Reto contrarreloj opcional: terminar a tiempo da un bono; si se acaba el tiempo, no pasa nada.
+  addTimer() {
+    this.timeLeft = this.round.total * 7;
+    this.timerChip = chip(this, 370, 100, 'ic-clock', this.timeLeft, { width: 210, tint: theme.c.ink });
+    this.time.addEvent({
+      delay: 250, loop: true,
+      callback: () => {
+        // El reloj solo corre mientras el jugador puede responder (no durante animaciones ni explicaciones).
+        if (this.busy || this.timeLeft <= 0 || this.round.finished) return;
+        this.timeLeft = Math.max(0, this.timeLeft - 0.25);
+        this.timerChip.valueText.setText(String(Math.ceil(this.timeLeft)));
+        if (this.timeLeft === 0) {
+          this.timerChip.setAlpha(0.5);
+          this.say('Se acabó el tiempo del bono. ¡No pasa nada! Sigue con calma.', 'happy');
+        }
+      },
+    });
   }
 
   // Ventana de explicación cuando hay un error: sin castigo, se explica y se reintenta.
@@ -121,12 +106,12 @@ export class SortingScene extends Phaser.Scene {
   }
 
   setBinsEnabled(on) {
-    for (const b of this.bins) b.enabled = on;
+    for (const b of this.bins) b.enabled = on && this.activeBins.includes(b.bin.id);
   }
 
   spawnWaste() {
     const w = this.round.current;
-    this.updateHud();
+    this.hud.update(this.round);
     const c = this.add.container(HOME.x, -200).setDepth(50);
     const halo = this.add.circle(0, 0, 170, 0xffffff, 0.4);
     const img = this.add.image(0, 0, `waste-${w.id}`).setDisplaySize(WASTE_SIZE, WASTE_SIZE);
@@ -207,11 +192,11 @@ export class SortingScene extends Phaser.Scene {
     bin.react(true);
     audio.sfx('success');
     this.sparks.explode(26, bin.mouth.x, bin.mouth.y + 40);
-    this.floatReward(bin.mouth.x - 90, bin.mouth.y - 40, `+${result.xp}`, 'ic-star', 0xf9a825);
-    this.time.delayedCall(180, () => { audio.sfx('coin'); this.floatReward(bin.mouth.x + 90, bin.mouth.y - 40, `+${result.coins}`, 'ic-coin'); });
-    this.updateHud();
-    this.env.setClean(this.cleanStart + (this.cleanGain * this.round.index) / this.round.total, true);
-    this.guide.hop(40);
+    floatReward(this, bin.mouth.x - 90, bin.mouth.y - 40, `+${result.xp}`, 'ic-star', 0xf9a825);
+    this.time.delayedCall(180, () => { audio.sfx('coin'); floatReward(this, bin.mouth.x + 90, bin.mouth.y - 40, `+${result.coins}`, 'ic-coin'); });
+    this.hud.update(this.round);
+    this.env.setClean(this.setup.cleanStart + (this.setup.cleanGain * this.round.index) / this.round.total, true);
+    this.guide.character.hop(40);
     this.say(`${result.firstTry ? '¡Muy bien!' : '¡Lo lograste!'} ${result.waste.fact}`, 'happy');
     this.time.delayedCall(result.finished ? 1900 : 2500, () => (result.finished ? this.finishRound() : this.spawnWaste()));
   }
@@ -247,18 +232,9 @@ export class SortingScene extends Phaser.Scene {
     }
   }
 
-  floatReward(x, y, text, icon, tint = null) {
-    const c = this.add.container(x, y).setDepth(70);
-    const img = this.add.image(-46, 0, icon).setDisplaySize(60, 60);
-    if (tint !== null) img.setTint(tint);
-    c.add([img, label(this, 26, 0, text, { size: 56, color: '#FFFFFF', stroke: '#17324D', strokeThickness: 12 })]);
-    this.tweens.add({ targets: c, y: y - 150, alpha: { from: 1, to: 0 }, duration: 1300, ease: 'Quad.out', onComplete: () => c.destroy() });
-  }
-
   finishRound() {
-    const summary = this.round.summary();
-    const { leveledUp, level, unlockedWorld } = gameState.applyRoundResult(summary, this.world.id);
-    goTo(this, 'Results', { worldId: this.world.id, summary, leveledUp, level, unlockedWorld });
+    if (this.setup.timed && this.timeLeft > 0) this.round.grantTimeBonus();
+    finishMission(this, this.setup, this.round);
   }
 
   exit() {

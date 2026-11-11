@@ -76,10 +76,10 @@ export class WorldMapScene extends Phaser.Scene {
     label(this, x, y + 172, world.short, { size: 46, color: '#FFFFFF', stroke: unlocked ? '#17324D' : '#5F7183', strokeThickness: 12 });
 
     if (unlocked) {
-      // Mejor resultado conseguido en este mundo.
-      const best = gameState.worldProgress(world.id).bestStars;
-      for (let i = 0; i < 3; i++) {
-        this.add.image(x - 50 + i * 50, y + 232, 'ic-star').setDisplaySize(46, 46).setTint(i < best ? 0xffc107 : 0x1f5d3c).setAlpha(i < best ? 1 : 0.35);
+      // Un punto por misión: verde brillante si ya se terminó.
+      const { done, total } = gameState.worldStatus(world.id);
+      for (let i = 0; i < total; i++) {
+        this.add.circle(x - 54 + i * 36, y + 232, 13, i < done ? 0xffd23f : 0x1f5d3c, i < done ? 1 : 0.35).setStrokeStyle(4, 0xffffff, i < done ? 1 : 0.5);
       }
       this.tweens.add({ targets: b, y: y - 12, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     }

@@ -26,6 +26,7 @@ const MONO = {
   medal: (c) => `<path d="M34 10 L46 44 M66 10 L54 44" stroke="${c}" stroke-width="12" ${S}/><circle cx="50" cy="62" r="28" fill="${c}"/><path d="M50 46 l5 11 12 1 -9 8 3 12 -11 -6 -11 6 3 -12 -9 -8 12 -1 z" fill="#000" opacity="0.3"/>`,
   user: (c) => `<circle cx="50" cy="34" r="20" fill="${c}"/><path d="M14 88 a36 32 0 0 1 72 0 Z" fill="${c}"/>`,
   family: (c) => `<circle cx="34" cy="30" r="16" fill="${c}"/><path d="M6 80 a28 28 0 0 1 56 0 Z" fill="${c}"/><circle cx="72" cy="46" r="12" fill="${c}"/><path d="M50 88 a22 22 0 0 1 44 0 Z" fill="${c}"/>`,
+  clock: (c) => `<circle cx="50" cy="50" r="38" fill="none" stroke="${c}" stroke-width="10"/><path d="M50 28 V50 L66 60" fill="none" stroke="${c}" stroke-width="9" ${S}/>`,
   star: (c) => `<path d="M50 8 l12 27 30 3 -22 20 6 30 -26 -15 -26 15 6 -30 -22 -20 30 -3 z" fill="${c}" stroke="${c}" stroke-width="4" ${S}/>`,
   lupa: (c) => `<circle cx="42" cy="42" r="26" fill="none" stroke="${c}" stroke-width="11"/><path d="M62 62 L86 86" stroke="${c}" stroke-width="14" ${S}/>`,
   brujula: (c) => `<circle cx="50" cy="50" r="38" fill="none" stroke="${c}" stroke-width="9"/><path d="M64 36 L56 56 L36 64 L44 44 Z" fill="${c}"/>`,

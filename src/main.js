@@ -12,6 +12,7 @@ import { WorldMapScene } from './scenes/WorldMapScene.js';
 import { MissionIntroScene } from './scenes/MissionIntroScene.js';
 import { SortingScene } from './scenes/SortingScene.js';
 import { ResultsScene } from './scenes/ResultsScene.js';
+import { ChallengeScene } from './scenes/ChallengeScene.js';
 import { SettingsScene } from './scenes/SettingsScene.js';
 import { ComingSoonScene } from './scenes/ComingSoonScene.js';
 
@@ -33,7 +34,7 @@ async function start() {
     // En equipos lentos el reloj del juego sigue el tiempo real (Phaser lo frena por debajo de `min`).
     fps: { min: 1 },
     input: { activePointers: 3 },
-    scene: [BootScene, TitleScene, StoryScene, ProfileScene, WorldMapScene, MissionIntroScene, SortingScene, ResultsScene, SettingsScene, ComingSoonScene],
+    scene: [BootScene, TitleScene, StoryScene, ProfileScene, WorldMapScene, MissionIntroScene, SortingScene, ChallengeScene, ResultsScene, SettingsScene, ComingSoonScene],
   });
   window.__ECOMISION__ = game; // para pruebas automáticas y depuración
 }

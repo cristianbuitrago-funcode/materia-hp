@@ -103,9 +103,19 @@ async function main() {
     await waitScene('MissionIntro');
     await page.waitForTimeout(900);
     await shot('09-misiones');
-    // ¡Comenzar! → juego de clasificación (modo Aventurero: 8 residuos).
-    await click(1520, 970);
+    // La misión 3 está cerrada hasta terminar las anteriores.
+    const ROW = (n) => [1300, 524 + (n - 1) * 96];
+    await click(...ROW(3));
+    await page.waitForTimeout(600);
+    await expectScenes(['MissionIntro']);
+    // Misión 1 "Recoger botellas" → juego de clasificación (modo Aventurero: 8 residuos).
+    await click(...ROW(1));
     await waitScene('Sorting');
+    const m1 = await page.evaluate(() => {
+      const s = window.__ECOMISION__.scene.getScene('Sorting');
+      return { id: s.setup.mission.id, focus: s.round.wastes.filter((w) => s.setup.mission.focus.includes(w.id)).length, timed: s.setup.timed };
+    });
+    if (m1.id !== 'city-1' || m1.focus < 5 || m1.timed) throw new Error(`Misión 1: ${JSON.stringify(m1)}`);
     const sorting = () => page.evaluate(() => {
       const s = window.__ECOMISION__.scene.getScene('Sorting');
       return { busy: s.busy, bin: s.round.current && s.round.current.bin, index: s.round.index, total: s.round.total, explain: s.explain.visible, hint: s.round.showHint };
@@ -177,39 +187,31 @@ async function main() {
     const want = { experience: 85, ecoCoins: 20, roundsPlayed: 1, correctAnswers: 8, incorrectAnswers: 1 };
     for (const [k, v] of Object.entries(want)) if (prog[k] !== v) throw new Error(`Progreso guardado: ${k}=${prog[k]}, se esperaba ${v}`);
     if (prog.learnedWasteTypes.length !== 8) throw new Error('No se guardaron los 8 residuos aprendidos');
-    // La ronda limpia un tercio de la ciudad y abre el bosque.
-    const city = prog.worldProgress.city;
-    if (!city || city.rounds !== 1 || city.bestStars !== 3 || Math.abs(city.clean - 1 / 3) > 1e-9) throw new Error(`Progreso de la ciudad: ${JSON.stringify(city)}`);
-    if (JSON.stringify(prog.unlockedWorlds) !== '["city","forest"]') throw new Error(`Mundos abiertos: ${prog.unlockedWorlds}`);
-    await click(W / 2 + 190 - 300, 970); // Mapa
-    await waitScene('WorldMap');
-    await page.waitForTimeout(600);
-    await shot('09e-mapa-bosque-abierto');
+    // Terminar la misión 1 limpia una cuarta parte de la ciudad, abre la misión 2 y aún no abre el bosque.
+    const m = prog.missionProgress['city-1'];
+    if (!m || m.stars !== 3 || m.plays !== 1) throw new Error(`Misión city-1: ${JSON.stringify(m)}`);
+    if (JSON.stringify(prog.unlockedWorlds) !== '["city"]') throw new Error(`Mundos abiertos: ${prog.unlockedWorlds}`);
+    if (prog.recentAnswers.length !== 8 || prog.recentAnswers.filter((x) => !x).length !== 1) throw new Error(`Respuestas recientes: ${prog.recentAnswers}`);
+    if (Object.keys(prog.trouble).length !== 1) throw new Error(`Residuos por repasar: ${JSON.stringify(prog.trouble)}`);
 
-    // Mundo 2 (recién abierto): su propio escenario, guía y residuos.
-    await click(640, 400);
-    await waitScene('MissionIntro');
-    await page.waitForTimeout(900);
-    await shot('09f-bosque-misiones');
-    await page.keyboard.press('Enter'); // ¡Comenzar!
+    // "Siguiente misión" lleva a la misión 2, que repasa el residuo fallado; salir a mitad no guarda ni castiga.
+    await click(W / 2 + 190 + 240, 970);
     await waitScene('Sorting');
-    await waitReady();
-    const forest = await page.evaluate(() => {
+    const m2 = await page.evaluate(() => {
       const s = window.__ECOMISION__.scene.getScene('Sorting');
-      return { world: s.world.id, clean: s.env.clean, ids: s.round.wastes.map((w) => w.id), typical: s.world.wastes };
+      return { id: s.setup.mission.id, clean: s.env.clean, ids: s.round.wastes.map((w) => w.id) };
     });
-    if (forest.world !== 'forest' || forest.clean !== 0) throw new Error(`Bosque: ${JSON.stringify(forest)}`);
-    if (forest.ids.filter((id) => forest.typical.includes(id)).length < 6) throw new Error(`La ronda del bosque no usa sus residuos típicos: ${forest.ids}`);
-    // Dos aciertos: el escenario se va limpiando durante la ronda.
-    for (let i = 0; i < 2; i++) { await waitReady(); await click(BIN_X[(await sorting()).bin], 760); await waitIndex(i + 1); }
-    const cleaned = await page.evaluate(() => window.__ECOMISION__.scene.getScene('Sorting').env.clean);
-    if (!(cleaned > 0.08 && cleaned < 0.09)) throw new Error(`Limpieza tras 2 de 8 aciertos: ${cleaned}`);
-    await page.waitForTimeout(900);
-    await shot('09g-bosque-jugando');
-    await page.keyboard.press('Escape'); // salir a mitad de ronda no guarda ni castiga
+    if (m2.id !== 'city-2' || m2.clean !== 0.25) throw new Error(`Misión 2: ${JSON.stringify(m2)}`);
+    if (!m2.ids.includes(Object.keys(prog.trouble)[0])) throw new Error(`La misión 2 no repasa ${Object.keys(prog.trouble)[0]}: ${m2.ids}`);
+    await waitReady();
+    await page.keyboard.press('Escape');
     await waitScene('MissionIntro');
+    await page.waitForTimeout(700);
+    await shot('09e-misiones-avance');
     await page.keyboard.press('Escape');
     await waitScene('WorldMap');
+    await page.waitForTimeout(500);
+    await shot('09f-mapa-avance');
 
     // Barra de secciones → pantalla "en construcción" → volver.
     await click(W / 2, H - 86);
@@ -248,6 +250,94 @@ async function main() {
     const box = await page.locator('canvas').boundingBox();
     if (box.width > 390.5 || box.x < -0.5) throw new Error(`El lienzo no cabe en pantalla vertical: ${JSON.stringify(box)}`);
     await shot('12-telefono-vertical');
+
+    // ---- Segunda partida (inyectada): océano con dos misiones hechas, para probar los otros retos.
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.evaluate(() => localStorage.setItem('ecomision.save.v1', JSON.stringify({
+      version: 1, settings: { music: false, sfx: false }, storySeen: true,
+      profile: { nickname: 'Tortuga Audaz', ageMode: 'adventurer', avatar: 'rana' },
+      progress: { unlockedWorlds: ['city', 'forest', 'ocean'], missionProgress: { 'ocean-1': { stars: 2, plays: 1 }, 'ocean-2': { stars: 3, plays: 1 } } },
+    })));
+    await page.reload();
+    await waitScene('Title');
+    await page.evaluate(() => window.__ECOMISION__.scene.getScene('Title').scene.start('MissionIntro', { worldId: 'ocean' }));
+    await waitScene('MissionIntro');
+    await page.waitForTimeout(700);
+    await shot('13-oceano-misiones');
+
+    const challenge = () => page.evaluate(() => {
+      const s = window.__ECOMISION__.scene.getScene('Challenge');
+      const it = s.round.current;
+      return { kind: s.kind, index: s.round.index, total: s.round.total, busy: s.busy, next: !!s.nextBtn, answer: it && it.answer,
+        buttons: s.options.map((b) => (b.active ? { x: b.x, y: b.y, enabled: b.enabled } : null)) };
+    });
+    const waitItem = (n) => page.waitForFunction((k) => {
+      const s = window.__ECOMISION__.scene.getScene('Challenge');
+      return s.scene.isActive() && s.round.index === k && !s.busy && !s.nextBtn && s.options.length > 0;
+    }, n, { timeout: 30000 });
+    const waitNext = () => page.waitForFunction(() => !!window.__ECOMISION__.scene.getScene('Challenge').nextBtn, null, { timeout: 30000 });
+
+    // Misión 3 del océano: "¿Está en la caneca correcta?".
+    await click(...ROW(3));
+    await waitScene('Challenge');
+    await waitItem(0);
+    await page.waitForTimeout(600);
+    await shot('14-esta-bien');
+    let ch = await challenge();
+    if (ch.kind !== 'check' || ch.total !== 6) throw new Error(`Reto "¿está bien?": ${JSON.stringify(ch)}`);
+    // Primer residuo: respuesta equivocada (se descarta y no avanza), luego la correcta.
+    const bad = ch.buttons[1 - ch.answer];
+    await click(bad.x, bad.y);
+    await page.waitForTimeout(500);
+    ch = await challenge();
+    if (ch.index !== 0 || ch.next || ch.buttons[1 - ch.answer].enabled) throw new Error(`Tras un error: ${JSON.stringify(ch)}`);
+    for (let i = 0; i < 6; i++) {
+      await waitItem(i);
+      ch = await challenge();
+      await click(ch.buttons[ch.answer].x, ch.buttons[ch.answer].y);
+      await waitNext();
+      if (i === 0) { await page.waitForTimeout(700); await shot('15-esta-bien-explicacion'); }
+      await page.keyboard.press('Enter'); // Seguir
+    }
+    await waitScene('Results');
+    let save = await page.evaluate(() => JSON.parse(localStorage.getItem('ecomision.save.v1')).progress);
+    if (!save.missionProgress['ocean-3'] || save.missionProgress['ocean-3'].stars !== 2) throw new Error(`ocean-3: ${JSON.stringify(save.missionProgress)}`);
+    if (save.unlockedWorlds.includes('mountain')) throw new Error('La montaña se abrió antes de terminar el océano');
+    console.log('  ✓     reto "¿está en la caneca correcta?" completo');
+
+    // Misión 4: preguntas ambientales, respondidas con el teclado (1, 2, 3 y Enter).
+    await page.keyboard.press('Enter'); // Siguiente misión
+    await waitScene('Challenge');
+    await waitItem(0);
+    await page.waitForTimeout(600);
+    await shot('16-pregunta');
+    ch = await challenge();
+    if (ch.kind !== 'quiz' || ch.total !== 4) throw new Error(`Preguntas: ${JSON.stringify(ch)}`);
+    for (let i = 0; i < 4; i++) {
+      await waitItem(i);
+      ch = await challenge();
+      await page.keyboard.press(String(ch.answer + 1));
+      await waitNext();
+      if (i === 0) { await page.waitForTimeout(700); await shot('17-pregunta-explicacion'); }
+      await page.keyboard.press('Enter');
+    }
+    await waitScene('Results');
+    await page.waitForTimeout(2600);
+    await shot('18-mundo-recuperado');
+    save = await page.evaluate(() => JSON.parse(localStorage.getItem('ecomision.save.v1')).progress);
+    if (save.missionProgress['ocean-4'].stars !== 3) throw new Error(`ocean-4: ${JSON.stringify(save.missionProgress['ocean-4'])}`);
+    if (JSON.stringify(save.unlockedWorlds) !== '["city","forest","ocean","mountain"]') throw new Error(`Al recuperar el océano: ${save.unlockedWorlds}`);
+    console.log('  ✓     preguntas completas: océano recuperado y montaña abierta');
+
+    // Misión 2 (contrarreloj opcional): el reloj aparece y no corre durante las animaciones.
+    await page.keyboard.press('Escape');
+    await waitScene('MissionIntro');
+    await click(...ROW(2));
+    await waitScene('Sorting');
+    await waitReady();
+    const timer = await page.evaluate(() => { const s = window.__ECOMISION__.scene.getScene('Sorting'); return { timed: s.setup.timed, left: s.timeLeft, total: s.round.total, clean: s.env.clean }; });
+    if (!timer.timed || !(timer.left > timer.total * 7 - 5 && timer.left <= timer.total * 7) || timer.clean !== 1) throw new Error(`Contrarreloj: ${JSON.stringify(timer)}`);
+    await shot('19-contrarreloj');
 
     if (errors.length) throw new Error(`Errores en la consola:\n${errors.join('\n')}`);
     console.log(`\nPrueba de humo superada (${step} pantallas verificadas, 0 errores de consola).`);

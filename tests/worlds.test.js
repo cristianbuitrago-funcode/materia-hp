@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { WORLDS } from '../src/config/worlds.js';
 import { getWaste } from '../src/game/wastes.js';
 import { buildRound, ROUND_RULES } from '../src/game/SortingEngine.js';
-import { GameState, MemoryStorage, CLEAN_PER_ROUND } from '../src/core/GameState.js';
 import { visibleCounts } from '../src/worlds/cleanliness.js';
 import { THEMES, freq } from '../src/core/AudioManager.js';
 
@@ -10,7 +9,6 @@ function seeded(seed) {
   let s = seed;
   return () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; };
 }
-const summary = (stars) => ({ total: 6, firstTry: 6, mistakes: 0, stars, xp: 70, coins: 17, learned: [] });
 
 describe('residuos propios de cada mundo', () => {
   it('las listas solo nombran residuos que existen y cubren las tres canecas', () => {
@@ -49,35 +47,6 @@ describe('residuos propios de cada mundo', () => {
       expect(white.length).toBeGreaterThanOrEqual(3);
       expect(white.every((w) => ocean.wastes.includes(w.id))).toBe(true);
     }
-  });
-});
-
-describe('progreso por mundo', () => {
-  it('cada ronda limpia un tercio del mundo, guarda el mejor resultado y abre el siguiente', () => {
-    const storage = new MemoryStorage();
-    const s = new GameState(storage).load();
-    expect(s.worldProgress('city')).toEqual({ rounds: 0, bestStars: 0, clean: 0 });
-    expect(s.applyRoundResult(summary(2), 'city').unlockedWorld).toBe('forest');
-    expect(s.applyRoundResult(summary(3), 'city').unlockedWorld).toBeNull(); // ya estaba abierto
-    s.applyRoundResult(summary(1), 'city');
-    s.applyRoundResult(summary(1), 'city');
-    const again = new GameState(storage).load();
-    expect(again.worldProgress('city')).toEqual({ rounds: 4, bestStars: 3, clean: 1 });
-    expect(again.progress.unlockedWorlds).toEqual(['city', 'forest']);
-    expect(CLEAN_PER_ROUND * 3).toBeCloseTo(1);
-  });
-
-  it('el último mundo no abre nada más y los mundos inexistentes se rechazan', () => {
-    const s = new GameState(new MemoryStorage()).load();
-    expect(s.applyRoundResult(summary(3), 'future').unlockedWorld).toBeNull();
-    expect(() => s.applyRoundResult(summary(3), 'luna')).toThrow();
-  });
-
-  it('descarta progreso de mundos dañado al cargar', () => {
-    const storage = new MemoryStorage();
-    storage.data = { version: 1, progress: { worldProgress: { city: { rounds: -3, bestStars: 9, clean: 7 }, luna: { rounds: 1 }, forest: 'x' } } };
-    const s = new GameState(storage).load();
-    expect(s.progress.worldProgress).toEqual({ city: { rounds: 0, bestStars: 0, clean: 1 } });
   });
 });
 

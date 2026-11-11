@@ -105,7 +105,7 @@ describe('SortingRound', () => {
       return r.summary();
     };
     const five = pick('botella', 'banano', 'servilleta', 'lata', 'manzana');
-    expect(play(five, [])).toEqual({ total: 5, firstTry: 5, mistakes: 0, stars: 3, xp: 60, coins: 15,
+    expect(play(five, [])).toEqual({ total: 5, firstTry: 5, mistakes: 0, stars: 3, xp: 60, coins: 15, timeBonus: false,
       learned: ['botella', 'banano', 'servilleta', 'lata', 'manzana'] });
     expect(play(five, ['banano', 'lata'])).toMatchObject({ firstTry: 3, mistakes: 2, stars: 2, xp: 50, coins: 13 });
     expect(play(five, five.map((w) => w.id))).toMatchObject({ firstTry: 0, mistakes: 5, stars: 1, xp: 35, coins: 10 });
@@ -127,8 +127,8 @@ describe('guardado del resultado de una ronda', () => {
     const storage = new MemoryStorage();
     const s = new GameState(storage).load();
     const summary = { total: 6, firstTry: 5, mistakes: 1, stars: 2, xp: 65, coins: 16, learned: ['lata', 'banano'] };
-    expect(s.applyRoundResult(summary)).toEqual({ leveledUp: false, level: 1, unlockedWorld: null });
-    expect(s.applyRoundResult({ ...summary, learned: ['lata', 'vidrio'] })).toEqual({ leveledUp: true, level: 2, unlockedWorld: null });
+    expect(s.applyRoundResult(summary)).toMatchObject({ leveledUp: false, level: 1, unlockedWorld: null });
+    expect(s.applyRoundResult({ ...summary, learned: ['lata', 'vidrio'] })).toMatchObject({ leveledUp: true, level: 2, unlockedWorld: null });
     const again = new GameState(storage).load();
     expect(again.progress).toMatchObject({ experience: 130, ecoCoins: 32, level: 2, roundsPlayed: 2, correctAnswers: 12, incorrectAnswers: 2,
       learnedWasteTypes: ['lata', 'banano', 'vidrio'] });

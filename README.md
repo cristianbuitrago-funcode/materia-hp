@@ -4,9 +4,9 @@ Videojuego educativo web para niños de 5 a 12 años. Enseña a identificar, sep
 disponer correctamente los residuos (código de colores de Colombia: caneca **blanca**,
 **negra** y **verde**) a través de una aventura por cinco mundos.
 
-> **Estado: FASES 1, 2 y 3 terminadas** (identidad visual, personajes, navegación, el juego
-> de clasificación y los cinco mundos con escenario, música y residuos propios). Las misiones,
-> la tienda, el álbum y Firebase llegan en las fases 4 a 8. Ver [Plan por fases](#plan-de-desarrollo-por-fases).
+> **Estado: FASES 1 a 4 terminadas** (identidad visual, navegación, juego de clasificación,
+> los cinco mundos, y las 20 misiones con dificultad adaptativa). La tienda, el álbum, las
+> insignias y Firebase llegan en las fases 5 a 8. Ver [Plan por fases](#plan-de-desarrollo-por-fases).
 
 ## Cómo ejecutarlo
 
@@ -34,7 +34,7 @@ npm run test:smoke   # recorre el juego compilado en un navegador real (requiere
 | --- | --- |
 | Motor del videojuego | `src/main.js`, `src/scenes/` |
 | Gestión de mundos | `src/config/worlds.js` (datos), `src/worlds/` (escenarios y limpieza visual), `WorldMapScene` |
-| Sistema de misiones | `src/config/worlds.js` (datos), `MissionIntroScene` — lógica en fase 4 |
+| Sistema de misiones | `src/config/missions.js` (plan), `src/game/questions.js`, `src/game/Difficulty.js`, `MissionIntroScene`, `ChallengeScene` |
 | Clasificación de residuos | `src/game/` (catálogo, canecas, `SortingEngine`), `SortingScene`, `ResultsScene` |
 | Sistema de recompensas | experiencia, monedas, nivel y estrellas en `SortingEngine` y `GameState` — insignias, tienda y álbum en fase 5 |
 | Gestión de usuarios | `ProfileScene`, `GameState.createProfile` — cuentas de adultos en fase 6 |
@@ -65,7 +65,7 @@ scripts/smoke.cjs         Prueba de humo en navegador
 Boot ─► Inicio ─┬─► Historia ─► Perfil (edad ─► avatar y apodo) ─► Mapa de mundos
                 │                                                   │
                 └─(si ya hay partida: "¡Continuar!")────────────────┤
-                                                                    ├─► Introducción de misiones ─► Juego de clasificación ─► Resultados ─► (otra vez | mapa)
+                                                                    ├─► Lista de misiones ─► Misión (clasificar | ¿está bien? | preguntas) ─► Resultados ─► siguiente misión
 Ajustes (ventana desde Inicio y Mapa)                               └─► Álbum · Tienda · Insignias · Perfil · Adultos  [fases 5 y 7]
 Inicio ─► Ingresar [fase 6] · Padres y docentes [fase 7]
 ```
@@ -102,12 +102,30 @@ en qué fase llegan; no simulan funcionalidad.
 | 5 · Futuro Sostenible | Aerogeneradores, casas con paneles solares y ciclorruta, con terrenos sin recuperar | Arcoíris, huerta, árboles y mariposas | Todo el catálogo | Brillante y veloz |
 
 - **Reconstrucción de escenarios:** cada acierto limpia un poco el mundo a la vista del jugador
-  (la basura desaparece, vuelve la vida y se despeja la neblina). Cada ronda terminada recupera
-  un tercio del mundo y queda guardado; con tres rondas el mundo está recuperado.
-- **Desbloqueo provisional:** terminar una ronda en un mundo abre el siguiente. La fase 4 lo
-  condicionará a completar las misiones.
+  (la basura desaparece, vuelve la vida y se despeja la neblina). Cada misión terminada recupera
+  una cuarta parte del mundo y queda guardado; con las cuatro misiones el mundo está recuperado.
 - **Rendimiento:** las capas fijas de cada escenario se convierten en una sola imagen al cargar,
   para que el juego funcione en computadores modestos.
+
+## Misiones y dificultad adaptativa (hecho)
+
+Cada mundo tiene cuatro misiones que se abren en orden; al terminar las cuatro se abre el mundo
+siguiente. Hay tres tipos de reto (`src/config/missions.js`):
+
+| Tipo | Qué se hace | Edades |
+| --- | --- | --- |
+| Clasificar | Arrastrar residuos a su caneca. Cada misión tiene sus protagonistas (botellas, papel, orgánicos…) o solo dos canecas | Todas |
+| ¿Está en la caneca correcta? | Ver un residuo ya botado y decidir si quedó bien. Se juega con imágenes | Todas |
+| Preguntas ambientales | Tres opciones; sencillas para 8-10 años, situaciones reales y decisiones de reducir, reutilizar y reciclar para 11-12 | Desde 8 años |
+
+- Los **exploradores (5-7)** nunca reciben preguntas de lectura: en su lugar juegan un reto con imágenes.
+- **Contrarreloj opcional** en algunas misiones (nunca para exploradores): terminar a tiempo da un bono
+  de monedas; si el tiempo se acaba no pasa nada. El reloj se detiene durante animaciones y explicaciones.
+- **Dificultad adaptativa** (`src/game/Difficulty.js`): el juego recuerda las últimas 20 respuestas.
+  Con 85 % o más de aciertos a la primera, la ronda crece, entran residuos más difíciles y la pista tarda más;
+  con 50 % o menos, la ronda se acorta, los residuos son más fáciles y la pista llega antes. El guía avisa del cambio.
+- **Repaso:** los residuos en los que el jugador se equivoca vuelven a salir en las rondas siguientes
+  (máximo dos por ronda) hasta que los acierta a la primera.
 
 ## Privacidad infantil
 
@@ -138,7 +156,7 @@ las gestiona Firebase Authentication; en el cliente solo va la configuración p�
 | 1 | Diseño visual, identidad, personajes, arquitectura y navegación | ✅ Terminada |
 | 2 | Motor del juego y mecánica Sorting Game (arrastrar, tocar, teclado) | ✅ Terminada |
 | 3 | Los cinco mundos con arte, música y elementos propios | ✅ Terminada |
-| 4 | Misiones, niveles y dificultad adaptativa | Pendiente |
+| 4 | Misiones, niveles y dificultad adaptativa | ✅ Terminada |
 | 5 | Monedas, experiencia, insignias, tienda, álbum, perfil | Pendiente |
 | 6 | Firebase Authentication, Firestore, reglas de seguridad, Hosting | Pendiente |
 | 7 | Panel de padres y docentes | Pendiente |

@@ -5,6 +5,9 @@
 import { FIRST_WORLD, getWorld, nextWorld } from '../config/worlds.js';
 import { getAgeMode } from '../config/ageModes.js';
 import { isValidAvatar } from '../config/avatars.js';
+import { MISSIONS_PER_WORLD, missionId, parseMissionId } from '../config/missions.js';
+import { pushRecent, updateTrouble, RECENT_WINDOW, TROUBLE_MAX } from '../game/Difficulty.js';
+import { getWaste } from '../game/wastes.js';
 
 export const SAVE_VERSION = 1;
 const STORAGE_KEY = 'ecomision.save.v1';
@@ -25,7 +28,9 @@ export function defaultState() {
       correctAnswers: 0,
       incorrectAnswers: 0,
       learnedWasteTypes: [],
-      worldProgress: {}, // { [worldId]: { rounds, bestStars, clean } } · clean va de 0 (contaminado) a 1 (recuperado)
+      missionProgress: {}, // { [missionId]: { stars, plays } } · solo misiones terminadas al menos una vez
+      recentAnswers: [],   // últimas respuestas (true = a la primera), para la dificultad adaptativa
+      trouble: {},         // { [wasteId]: n } residuos que más le cuestan, para repasarlos
     },
   };
 }
@@ -34,9 +39,6 @@ export const XP_PER_LEVEL = 100;
 export function levelForXp(xp) {
   return 1 + Math.floor(Math.max(0, xp) / XP_PER_LEVEL);
 }
-
-// Cada ronda terminada limpia un tercio del mundo: con tres rondas queda recuperado.
-export const CLEAN_PER_ROUND = 1 / 3;
 
 export class MemoryStorage {
   constructor() { this.data = null; }
@@ -81,16 +83,23 @@ export class GameState {
         if (!Number.isFinite(base.progress[k]) || base.progress[k] < 0) base.progress[k] = 0;
       }
       base.progress.level = levelForXp(base.progress.experience);
-      const wp = base.progress.worldProgress;
-      base.progress.worldProgress = {};
-      if (wp && typeof wp === 'object') {
-        for (const [id, v] of Object.entries(wp)) {
-          if (!getWorld(id) || !v || typeof v !== 'object') continue;
-          base.progress.worldProgress[id] = {
-            rounds: Number.isFinite(v.rounds) && v.rounds > 0 ? Math.floor(v.rounds) : 0,
-            bestStars: [1, 2, 3].includes(v.bestStars) ? v.bestStars : 0,
-            clean: Number.isFinite(v.clean) ? Math.min(1, Math.max(0, v.clean)) : 0,
-          };
+      delete base.progress.worldProgress; // formato de la fase 3, reemplazado por las misiones
+      const mp = base.progress.missionProgress;
+      base.progress.missionProgress = {};
+      if (mp && typeof mp === 'object') {
+        for (const [id, v] of Object.entries(mp)) {
+          if (!parseMissionId(id) || !v || ![1, 2, 3].includes(v.stars)) continue;
+          base.progress.missionProgress[id] = { stars: v.stars, plays: Number.isFinite(v.plays) && v.plays >= 1 ? Math.floor(v.plays) : 1 };
+        }
+      }
+      base.progress.completedMissions = Object.keys(base.progress.missionProgress);
+      const ra = base.progress.recentAnswers;
+      base.progress.recentAnswers = Array.isArray(ra) ? ra.slice(-RECENT_WINDOW).map(Boolean) : [];
+      const tr = base.progress.trouble;
+      base.progress.trouble = {};
+      if (tr && typeof tr === 'object') {
+        for (const [id, n] of Object.entries(tr)) {
+          if (getWaste(id) && Number.isFinite(n) && n >= 1) base.progress.trouble[id] = Math.min(TROUBLE_MAX, Math.floor(n));
         }
       }
       if (!Array.isArray(base.progress.unlockedWorlds) || !base.progress.unlockedWorlds.includes(FIRST_WORLD)) {
@@ -146,14 +155,30 @@ export class GameState {
     }
   }
 
-  worldProgress(worldId) {
-    return this.data.progress.worldProgress[worldId] || { rounds: 0, bestStars: 0, clean: 0 };
+  missionState(id) {
+    return this.data.progress.missionProgress[id] || null;
   }
 
-  // Guarda el resultado de una ronda de clasificación (resumen de SortingRound).
-  // Si se indica el mundo, este queda más limpio y, al terminar la primera ronda,
-  // se abre el mundo siguiente (la fase 4 lo condicionará a las misiones).
-  applyRoundResult(summary, worldId = null) {
+  // Una misión se puede jugar si su mundo está abierto y la anterior ya se terminó.
+  isMissionUnlocked(worldId, index) {
+    if (!this.isWorldUnlocked(worldId) || index < 0 || index >= MISSIONS_PER_WORLD) return false;
+    return index === 0 || !!this.missionState(missionId(worldId, index - 1));
+  }
+
+  // Avance de un mundo: misiones terminadas y limpieza (0 = contaminado, 1 = recuperado).
+  // Cada misión terminada recupera una cuarta parte del mundo.
+  worldStatus(worldId) {
+    let done = 0;
+    for (let i = 0; i < MISSIONS_PER_WORLD; i++) if (this.missionState(missionId(worldId, i))) done++;
+    return { done, total: MISSIONS_PER_WORLD, clean: done / MISSIONS_PER_WORLD, completed: done === MISSIONS_PER_WORLD };
+  }
+
+  // Guarda el resultado de una ronda (resumen de una Round de SortingEngine).
+  //   mission: id de la misión jugada; al terminar las cuatro de un mundo se abre el siguiente.
+  //   answers: respuestas de la ronda ([{ id, firstTry }]) para la dificultad adaptativa.
+  applyRoundResult(summary, mission = null, answers = []) {
+    const parsed = mission ? parseMissionId(mission) : null;
+    if (mission && !parsed) throw new Error(`Misión desconocida: ${mission}`);
     const p = this.data.progress;
     const before = p.level;
     p.experience += summary.xp;
@@ -163,23 +188,24 @@ export class GameState {
     p.correctAnswers += summary.total;
     p.incorrectAnswers += summary.mistakes;
     for (const id of summary.learned) if (!p.learnedWasteTypes.includes(id)) p.learnedWasteTypes.push(id);
-    let unlockedWorld = null;
-    if (worldId) {
-      if (!getWorld(worldId)) throw new Error(`Mundo desconocido: ${worldId}`);
-      const w = this.worldProgress(worldId);
-      p.worldProgress[worldId] = {
-        rounds: w.rounds + 1,
-        bestStars: Math.max(w.bestStars, summary.stars),
-        clean: Math.min(1, w.clean + CLEAN_PER_ROUND),
-      };
-      const next = nextWorld(worldId);
-      if (next && !p.unlockedWorlds.includes(next.id)) {
+    p.recentAnswers = pushRecent(p.recentAnswers, answers);
+    p.trouble = updateTrouble(p.trouble, answers);
+
+    let firstTime = false, worldCompleted = false, unlockedWorld = null;
+    if (parsed) {
+      const prev = this.missionState(mission);
+      firstTime = !prev;
+      p.missionProgress[mission] = { stars: Math.max(prev ? prev.stars : 0, summary.stars), plays: (prev ? prev.plays : 0) + 1 };
+      p.completedMissions = Object.keys(p.missionProgress);
+      worldCompleted = firstTime && this.worldStatus(parsed.worldId).completed;
+      const next = nextWorld(parsed.worldId);
+      if (worldCompleted && next && !p.unlockedWorlds.includes(next.id)) {
         p.unlockedWorlds.push(next.id);
         unlockedWorld = next.id;
       }
     }
     this.save();
-    return { leveledUp: p.level > before, level: p.level, unlockedWorld };
+    return { leveledUp: p.level > before, level: p.level, firstTime, worldCompleted, unlockedWorld };
   }
 
   // Borra perfil y progreso; conserva los ajustes de sonido.
