@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#14804A" />
+    <meta name="description" content="EcoMisión: Guardianes del Planeta. Un videojuego para aprender a separar residuos y cuidar el planeta." />
+    <title>EcoMisión: Guardianes del Planeta</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #0f5c36; overflow: hidden; touch-action: none; }
+      #game { width: 100vw; height: 100vh; height: 100dvh; }
+      canvas { display: block; outline: none; }
+      /* En teléfonos en vertical el juego se ve pequeño: se sugiere girar el dispositivo. */
+      #rotate-hint { display: none; position: fixed; left: 0; right: 0; bottom: 9vh; text-align: center; color: #fff;
+        font: 700 20px/1.3 Fredoka, "Trebuchet MS", sans-serif; padding: 0 24px; pointer-events: none; }
+      #rotate-hint span { display: block; font-size: 44px; }
+      @media (orientation: portrait) and (max-width: 700px) { #rotate-hint { display: block; } }
+      noscript { color: #fff; font-family: sans-serif; padding: 24px; display: block; }
+    </style>
+  </head>
+  <body>
+    <div id="game" role="application" aria-label="EcoMisión: Guardianes del Planeta, videojuego educativo"></div>
+    <div id="rotate-hint" aria-live="polite"><span aria-hidden="true">⟳</span>Gira tu dispositivo para jugar en grande</div>
+    <noscript>Para jugar EcoMisión necesitas activar JavaScript en tu navegador.</noscript>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

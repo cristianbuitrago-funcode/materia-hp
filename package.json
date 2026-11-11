@@ -1,0 +1,22 @@
+{
+  "name": "ecomision-guardianes-del-planeta",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EcoMisión: Guardianes del Planeta — videojuego educativo sobre separación de residuos (5 a 12 años)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "test": "vitest run",
+    "test:smoke": "node scripts/smoke.cjs"
+  },
+  "dependencies": {
+    "@fontsource/fredoka": "^5.3.0",
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.7",
+    "vitest": "^5.1.0"
+  }
+}
