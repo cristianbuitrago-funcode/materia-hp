@@ -1,6 +1,5 @@
 // Gestión de mundos: datos de los cinco escenarios desbloqueables.
-// Los colores definen la identidad de cada mundo; las misiones se
-// convierten en niveles jugables en las fases 2 a 4.
+// Cada mundo tiene cinco niveles (ver missions.js): cuatro misiones y un jefe final.
 export const WORLDS = [
   {
     id: 'city',
@@ -15,7 +14,9 @@ export const WORLDS = [
     badge: 'Héroe del Reciclaje',
     description: 'Las calles, los parques y el colegio están llenos de basura. ¡La ciudad necesita guardianes!',
     intro: '¡Mira cuánta basura hay en la ciudad! Vamos a recogerla y a ponerla en su caneca.',
-    missions: ['Recoger botellas', 'Separar papel y cartón', 'Clasificar residuos orgánicos', 'Limpiar los parques'],
+    // Cada nivel ocurre en un lugar distinto del mundo; el quinto es el jefe.
+    places: ['El parque', 'El colegio', 'La oficina', 'El punto de basuras', 'El callejón'],
+    missions: ['Recoger botellas', 'Separar papel y cartón', 'Clasificar residuos orgánicos', 'Limpiar a contrarreloj', 'Derrotar a Ratasura'],
   },
   {
     id: 'forest',
@@ -30,7 +31,9 @@ export const WORLDS = [
     badge: 'Guardián del Bosque',
     description: 'Los animales perdieron su hogar entre los residuos. Ayúdalos a recuperar su hábitat.',
     intro: 'Los animales del bosque están tristes. La basura les hace daño. ¡Vamos a ayudarlos!',
-    missions: ['Limpiar los senderos', 'Clasificar residuos', 'Recuperar zonas verdes', 'Descubrir cómo afecta la basura a los animales'],
+    // Cada nivel ocurre en un lugar distinto del mundo; el quinto es el jefe.
+    places: ['El sendero', 'El campamento', 'El claro', 'El río', 'El pantano'],
+    missions: ['Limpiar el sendero', 'Revisar las canecas', 'Recuperar zonas verdes', 'Cuidar a los animales', 'Derrotar a Moscardón'],
   },
   {
     id: 'ocean',
@@ -45,7 +48,9 @@ export const WORLDS = [
     badge: 'Protector del Océano',
     description: 'Peces, tortugas y corales nadan entre plásticos. ¡El mar te necesita!',
     intro: '¡Bip, bip! El plástico tarda cientos de años en desaparecer. Saquémoslo del mar.',
-    missions: ['Recoger residuos plásticos', 'Limpiar zonas marinas', 'Identificar materiales contaminantes', 'Proteger a los animales marinos'],
+    // Cada nivel ocurre en un lugar distinto del mundo; el quinto es el jefe.
+    places: ['La orilla', 'El muelle', 'El arrecife', 'Mar abierto', 'La fosa'],
+    missions: ['Recoger residuos plásticos', 'Limpiar a contrarreloj', 'Identificar contaminantes', 'Proteger a los animales marinos', 'Derrotar a Plastipulpo'],
   },
   {
     id: 'mountain',
@@ -60,7 +65,9 @@ export const WORLDS = [
     badge: 'Maestro de la Separación',
     description: 'Aquí termina la basura que no separamos. Descubre qué se puede aprovechar y qué no.',
     intro: '¡Bip! Esta montaña creció porque nadie separó sus residuos. ¡Tú puedes hacerla más pequeña!',
-    missions: ['Diferenciar aprovechables y no aprovechables', 'Aprender a reutilizar', 'Encontrar errores de clasificación', 'Resolver desafíos ambientales'],
+    // Cada nivel ocurre en un lugar distinto del mundo; el quinto es el jefe.
+    places: ['La entrada', 'El taller de reúso', 'La banda de separación', 'La cima', 'El cráter'],
+    missions: ['Aprovechable o no aprovechable', 'Aprender a reutilizar', 'Encontrar errores', 'Resolver desafíos', 'Derrotar a Basurón'],
   },
   {
     id: 'future',
@@ -75,7 +82,9 @@ export const WORLDS = [
     badge: 'Salvavidas del Planeta',
     description: 'Así se ve el planeta cuando todos lo cuidamos. Completa la misión final para salvarlo.',
     intro: '¡Lo lograste! Este es el mundo que podemos construir juntos. Falta la misión final.',
-    missions: ['Construir espacios sostenibles', 'Completar desafíos', 'Recuperar ecosistemas', 'Misión final: salvar el planeta'],
+    // Cada nivel ocurre en un lugar distinto del mundo; el quinto es el jefe.
+    places: ['El barrio solar', 'La huerta comunitaria', 'La planta de reciclaje', 'La plaza central', 'La fábrica gris'],
+    missions: ['Construir espacios sostenibles', 'Revisar las canecas', 'Recuperar ecosistemas', 'El gran reto final', 'Derrotar a Contaminator'],
   },
 ];
 

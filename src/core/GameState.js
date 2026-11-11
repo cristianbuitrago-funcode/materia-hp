@@ -9,6 +9,7 @@ import { MISSIONS_PER_WORLD, missionId, parseMissionId } from '../config/mission
 import { pushRecent, updateTrouble, RECENT_WINDOW, TROUBLE_MAX } from '../game/Difficulty.js';
 import { getWaste } from '../game/wastes.js';
 import { earnedBadges, getBadge } from '../game/rewards.js';
+import { unlockedAbilities } from '../game/abilities.js';
 import { getItem, purchaseCheck, listFor, FREE_ITEMS, DEFAULT_FRAME } from '../game/shop.js';
 
 function defaultRewards() {
@@ -195,11 +196,16 @@ export class GameState {
   }
 
   // Avance de un mundo: misiones terminadas y limpieza (0 = contaminado, 1 = recuperado).
-  // Cada misión terminada recupera una cuarta parte del mundo.
+  // Cada nivel terminado recupera una quinta parte del mundo.
   worldStatus(worldId) {
     let done = 0;
     for (let i = 0; i < MISSIONS_PER_WORLD; i++) if (this.missionState(missionId(worldId, i))) done++;
     return { done, total: MISSIONS_PER_WORLD, clean: done / MISSIONS_PER_WORLD, completed: done === MISSIONS_PER_WORLD };
+  }
+
+  // Habilidades ganadas al derrotar jefes.
+  abilities() {
+    return unlockedAbilities(this.data.progress.missionProgress);
   }
 
   // Guarda el resultado de una ronda (resumen de una Round de SortingEngine).
@@ -220,6 +226,7 @@ export class GameState {
     p.recentAnswers = pushRecent(p.recentAnswers, answers);
     p.trouble = updateTrouble(p.trouble, answers);
 
+    const abilitiesBefore = this.abilities();
     let firstTime = false, worldCompleted = false, unlockedWorld = null;
     if (parsed) {
       const prev = this.missionState(mission);
@@ -238,7 +245,8 @@ export class GameState {
     const newBadges = earnedBadges(p).filter((id) => !have.includes(id));
     have.push(...newBadges);
     this.save();
-    return { leveledUp: p.level > before, level: p.level, firstTime, worldCompleted, unlockedWorld, newBadges };
+    const newAbility = this.abilities().find((id) => !abilitiesBefore.includes(id)) || null;
+    return { leveledUp: p.level > before, level: p.level, firstTime, worldCompleted, unlockedWorld, newBadges, newAbility };
   }
 
   // ---- Tienda y personalización

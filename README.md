@@ -4,10 +4,9 @@ Videojuego educativo web para niños de 5 a 12 años. Enseña a identificar, sep
 disponer correctamente los residuos (código de colores de Colombia: caneca **blanca**,
 **negra** y **verde**) a través de una aventura por cinco mundos.
 
-> **Estado: FASES 1 a 5 terminadas** (identidad visual, navegación, juego de clasificación,
-> los cinco mundos, las 20 misiones con dificultad adaptativa, y recompensas: insignias, tienda,
-> álbum y perfil). Firebase, el panel de adultos y la accesibilidad final llegan en las fases 6 a 8.
-> Ver [Plan por fases](#plan-de-desarrollo-por-fases).
+> **Estado: FASES 1 a 5 terminadas**, más la ampliación de **cinco niveles por mundo con jefe
+> final y habilidades**. Firebase, el panel de adultos y la accesibilidad final llegan en las
+> fases 6 a 8. Ver [Plan por fases](#plan-de-desarrollo-por-fases).
 
 ## Cómo ejecutarlo
 
@@ -52,10 +51,12 @@ src/
   config/                 Datos: theme, worlds, ageModes, avatars, story
   core/                   GameState (guardado), AudioManager, Navigation (transiciones)
   art/                    characters (ECO, RECICLÍN, CONTAMINATOR, avatares), icons, textures, backgrounds
-  game/                   wastes (25 residuos), bins (3 canecas), SortingEngine (rondas y premios), BinTarget
+  game/                   wastes (25 residuos), bins (3 canecas), SortingEngine (rondas y premios), BinTarget,
+                          bosses (jefes y ataques), abilities (habilidades), Difficulty, questions, rewards, shop
   worlds/                 city, forest, ocean, mountain, future (escenarios), kit (piezas), index (limpieza visual)
   ui/                     widgets (Button, panel, toast, chip), Character, DialogBox, FocusManager
-  scenes/                 Boot, Title, Story, Profile, WorldMap, MissionIntro, Sorting, Results, Settings, ComingSoon
+  scenes/                 Boot, Title, Story, Profile, WorldMap, MissionIntro, Sorting, Challenge, Boss, Results,
+                          Album, Shop, Badges, PlayerProfile, Abilities, Settings, ComingSoon
 tests/                    Pruebas unitarias
 scripts/smoke.cjs         Prueba de humo en navegador
 ```
@@ -66,7 +67,7 @@ scripts/smoke.cjs         Prueba de humo en navegador
 Boot ─► Inicio ─┬─► Historia ─► Perfil (edad ─► avatar y apodo) ─► Mapa de mundos
                 │                                                   │
                 └─(si ya hay partida: "¡Continuar!")────────────────┤
-                                                                    ├─► Lista de misiones ─► Misión (clasificar | ¿está bien? | preguntas) ─► Resultados ─► siguiente misión
+                                                                    ├─► Lista de niveles ─► Nivel (clasificar | ¿está bien? | preguntas | jefe) ─► Resultados ─► siguiente nivel
 Ajustes (ventana desde Inicio y Mapa)                               └─► Álbum · Tienda · Insignias · Perfil · Adultos [fase 7]
 Inicio ─► Ingresar [fase 6] · Padres y docentes [fase 7]
 ```
@@ -103,15 +104,37 @@ en qué fase llegan; no simulan funcionalidad.
 | 5 · Futuro Sostenible | Aerogeneradores, casas con paneles solares y ciclorruta, con terrenos sin recuperar | Arcoíris, huerta, árboles y mariposas | Todo el catálogo | Brillante y veloz |
 
 - **Reconstrucción de escenarios:** cada acierto limpia un poco el mundo a la vista del jugador
-  (la basura desaparece, vuelve la vida y se despeja la neblina). Cada misión terminada recupera
-  una cuarta parte del mundo y queda guardado; con las cuatro misiones el mundo está recuperado.
+  (la basura desaparece, vuelve la vida y se despeja la neblina). Cada nivel terminado recupera
+  una quinta parte del mundo y queda guardado; al derrotar al jefe el mundo está recuperado.
 - **Rendimiento:** las capas fijas de cada escenario se convierten en una sola imagen al cargar,
   para que el juego funcione en computadores modestos.
 
+## Niveles, jefes y habilidades (hecho)
+
+Cada mundo tiene **cinco niveles**, cada uno en un lugar propio con su escenario, y la dificultad
+sube de uno a otro (rondas más largas y, desde el segundo nivel, residuos más difíciles). El quinto
+nivel es el **jefe final**; al derrotarlo se recupera el mundo, se abre el siguiente y se gana una habilidad.
+
+| Mundo | Niveles 1 a 4 | Jefe (nivel 5) | Ataque especial | Habilidad que entrega |
+| --- | --- | --- | --- | --- |
+| Ciudad | El parque · El colegio · La oficina · El punto de basuras | **Ratasura**, la rata gigante (El callejón) | *Revolcón*: cambia las canecas de lugar | **Lupa de Reciclín**: una vez por nivel hace brillar la caneca correcta |
+| Bosque | El sendero · El campamento · El claro · El río | **Moscardón**, el rey de las moscas (El pantano) | *Nube de humo*: tapa los letreros de las canecas | **Escudo de hojas**: perdona el primer error de cada nivel |
+| Océano | La orilla · El muelle · El arrecife · Mar abierto | **Plastipulpo**, el pulpo de plástico (La fosa) | *Chorro de tinta*: mancha el residuo; hay que tocarlo para limpiarlo | **Ola limpiadora**: una vez por nivel lleva el residuo a su caneca y explica por qué |
+| Montaña | La entrada · El taller de reúso · La banda de separación · La cima | **Basurón**, el gólem de basura (El cráter) | *Avalancha*: contrarreloj para un residuo | **Imán de monedas**: una moneda extra por acierto a la primera |
+| Futuro | El barrio solar · La huerta comunitaria · La planta de reciclaje · La plaza central | **Contaminator** (La fábrica gris) | Todos los anteriores, más *Mentira*: hace brillar una caneca equivocada | **Estrella del guardián**: las habilidades de botón se usan dos veces por nivel |
+
+**Cómo es el combate** (`BossScene`, `src/game/bosses.js`): el jefe lanza residuos; cada uno bien
+clasificado le quita un punto de vida. El jugador tiene tres escudos y pierde uno con cada error; sin
+escudos, el jefe «se escapa» y se puede reintentar de inmediato, sin perder progreso ni monedas.
+**Los exploradores (5-7 años) no pierden escudos ni reciben el ataque contrarreloj.** Cada error
+sigue mostrando la explicación de RECICLÍN, así que el combate también enseña.
+
+Las habilidades no se compran: solo se ganan derrotando jefes (`src/game/abilities.js`).
+
 ## Misiones y dificultad adaptativa (hecho)
 
-Cada mundo tiene cuatro misiones que se abren en orden; al terminar las cuatro se abre el mundo
-siguiente. Hay tres tipos de reto (`src/config/missions.js`):
+Los cuatro primeros niveles de cada mundo son misiones que se abren en orden.
+Hay tres tipos de reto (`src/config/missions.js`):
 
 | Tipo | Qué se hace | Edades |
 | --- | --- | --- |

@@ -65,6 +65,15 @@ export class BinTarget extends Phaser.GameObjects.Container {
     if (on) this.hintTween = this.scene.tweens.add({ targets: this.glow, alpha: 0.15, scale: 1.08, duration: 520, yoyo: true, repeat: -1 });
   }
 
+  // Nube de humo que tapa el letrero (ataque de un jefe): quedan el color y el símbolo.
+  setSmoke(on) {
+    if (on && !this.smoke) {
+      this.smoke = this.scene.add.image(0, 182, 'cloud').setDisplaySize(440, 200).setTint(0x8a8f98);
+      this.add(this.smoke);
+    }
+    if (this.smoke) this.smoke.setVisible(on);
+  }
+
   // La caneca "traga" con un rebote, o niega con una sacudida.
   react(correct) {
     const b = this.baseScale();

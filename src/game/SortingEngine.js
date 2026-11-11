@@ -86,7 +86,8 @@ export function buildCheckItems(rules, rng = Math.random, options = {}) {
 export function buildQuizItems(rules, rng = Math.random, { topics = [] } = {}) {
   const r = resolveRules(rules);
   const size = Math.max(3, Math.round(r.size / 2));
-  const pool = shuffle(QUESTIONS.filter((q) => q.tier <= r.maxTier), rng);
+  // Las preguntas más sencillas son de dificultad 2: en niveles fáciles se usan esas.
+  const pool = shuffle(QUESTIONS.filter((q) => q.tier <= Math.max(2, r.maxTier)), rng);
   const ordered = [...pool.filter((q) => topics.includes(q.topic)), ...pool.filter((q) => !topics.includes(q.topic))];
   return ordered.slice(0, size).map((q) => {
     const order = shuffle([0, 1, 2], rng);
@@ -97,10 +98,14 @@ export function buildQuizItems(rules, rng = Math.random, { topics = [] } = {}) {
 // Ronda genérica: una lista de retos que se responden de uno en uno.
 // Las subclases solo definen cuál es la respuesta correcta de cada reto.
 class Round {
-  constructor(items, { hintAfter = 1 } = {}) {
+  // shield: errores que se perdonan (habilidad Escudo de hojas).
+  // coinBonus: monedas extra por cada acierto a la primera (habilidad Imán de monedas).
+  constructor(items, { hintAfter = 1, shield = 0, coinBonus = 0 } = {}) {
     if (!items.length) throw new Error('La ronda necesita al menos un reto');
     this.items = items;
     this.hintAfter = hintAfter;
+    this.shield = shield;
+    this.coinBonus = coinBonus;
     this.index = 0;
     this.mistakesOnCurrent = 0;
     this.results = []; // { id, mistakes }
@@ -118,11 +123,16 @@ class Round {
   answer(isCorrect, learnedId) {
     if (this.finished) throw new Error('La ronda ya terminó');
     if (!isCorrect) {
+      if (this.shield > 0) { // error perdonado: no cuenta ni adelanta la pista
+        this.shield--;
+        return { correct: false, forgiven: true, mistakes: this.mistakesOnCurrent, showHint: this.showHint, xp: 0, coins: 0 };
+      }
       this.mistakesOnCurrent++;
       return { correct: false, mistakes: this.mistakesOnCurrent, showHint: this.showHint, xp: 0, coins: 0 };
     }
     const firstTry = this.mistakesOnCurrent === 0;
-    const prize = firstTry ? REWARDS.firstTry : REWARDS.retry;
+    const base = firstTry ? REWARDS.firstTry : REWARDS.retry;
+    const prize = { xp: base.xp, coins: base.coins + (firstTry ? this.coinBonus : 0) };
     this.xp += prize.xp;
     this.coins += prize.coins;
     this.results.push({ id: learnedId || null, mistakes: this.mistakesOnCurrent });

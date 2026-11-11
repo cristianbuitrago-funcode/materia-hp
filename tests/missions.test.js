@@ -18,21 +18,24 @@ const summary = (stars = 3) => ({ total: 6, firstTry: 6, mistakes: 0, stars, xp:
 const fresh = () => new GameState(new MemoryStorage()).load();
 
 describe('plan de misiones', () => {
-  it('cada mundo tiene cuatro misiones con título, tipo válido y consejo', () => {
-    expect(ALL_MISSION_IDS).toHaveLength(20);
+  it('cada mundo tiene cinco niveles con lugar, título, tipo válido y consejo; el quinto es el jefe', () => {
+    expect(ALL_MISSION_IDS).toHaveLength(25);
     for (const w of WORLDS) {
-      expect(MISSION_PLAN[w.id]).toHaveLength(4);
-      for (let i = 0; i < 4; i++) for (const mode of MODES) {
+      expect(MISSION_PLAN[w.id]).toHaveLength(5);
+      for (let i = 0; i < 5; i++) for (const mode of MODES) {
         const m = getMission(w.id, i, mode);
         expect(m.id).toBe(`${w.id}-${i + 1}`);
         expect(m.title).toBe(w.missions[i]);
-        expect(['sort', 'check', 'quiz']).toContain(m.kind);
+        expect(m.place).toBe(w.places[i]);
+        expect(m.kind === 'boss').toBe(i === 4);
+        expect(m.isBoss).toBe(i === 4);
+        expect(['sort', 'check', 'quiz', 'boss']).toContain(m.kind);
         expect(m.tip.length).toBeGreaterThan(15);
         for (const id of m.focus || []) expect(getWaste(id), `${m.id}: ${id}`).toBeTruthy();
         for (const b of m.bins || []) expect(BINS.some((x) => x.id === b)).toBe(true);
       }
     }
-    expect(getMission('city', 4)).toBeNull();
+    expect(getMission('city', 5)).toBeNull();
     expect(getMission('luna', 0)).toBeNull();
   });
 
@@ -48,14 +51,14 @@ describe('plan de misiones', () => {
 
   it('cada mundo ofrece al menos dos tipos de reto distintos', () => {
     for (const w of WORLDS) for (const mode of MODES) {
-      const kinds = new Set([0, 1, 2, 3].map((i) => getMission(w.id, i, mode).kind));
-      if (w.id !== 'city') expect(kinds.size, `${w.id}/${mode}`).toBeGreaterThanOrEqual(2);
+      const kinds = new Set([0, 1, 2, 3, 4].map((i) => getMission(w.id, i, mode).kind));
+      expect(kinds.size, `${w.id}/${mode}`).toBeGreaterThanOrEqual(2);
     }
   });
 
   it('convierte ids de misión en ambos sentidos y rechaza los inválidos', () => {
     expect(parseMissionId(missionId('ocean', 2))).toEqual({ worldId: 'ocean', index: 2 });
-    for (const bad of ['ocean-5', 'luna-1', 'ocean', '', null, 'ocean-0']) expect(parseMissionId(bad)).toBeNull();
+    for (const bad of ['ocean-6', 'luna-1', 'ocean', '', null, 'ocean-0']) expect(parseMissionId(bad)).toBeNull();
   });
 });
 
@@ -222,7 +225,7 @@ describe('dificultad adaptativa', () => {
 });
 
 describe('progreso de misiones', () => {
-  it('las misiones se abren en orden y cada una limpia una cuarta parte del mundo', () => {
+  it('los niveles se abren en orden y cada uno limpia una quinta parte del mundo', () => {
     const s = fresh();
     expect(s.isMissionUnlocked('city', 0)).toBe(true);
     expect(s.isMissionUnlocked('city', 1)).toBe(false);
@@ -230,7 +233,7 @@ describe('progreso de misiones', () => {
     expect(s.applyRoundResult(summary(2), 'city-1')).toMatchObject({ firstTime: true, worldCompleted: false, unlockedWorld: null });
     expect(s.isMissionUnlocked('city', 1)).toBe(true);
     expect(s.isMissionUnlocked('city', 2)).toBe(false);
-    expect(s.worldStatus('city')).toEqual({ done: 1, total: 4, clean: 0.25, completed: false });
+    expect(s.worldStatus('city')).toEqual({ done: 1, total: 5, clean: 0.2, completed: false });
   });
 
   it('repetir una misión conserva el mejor resultado y no limpia de más', () => {
@@ -238,27 +241,29 @@ describe('progreso de misiones', () => {
     s.applyRoundResult(summary(3), 'city-1');
     expect(s.applyRoundResult(summary(1), 'city-1')).toMatchObject({ firstTime: false });
     expect(s.missionState('city-1')).toEqual({ stars: 3, plays: 2 });
-    expect(s.worldStatus('city').clean).toBe(0.25);
+    expect(s.worldStatus('city').clean).toBe(0.2);
     expect(s.progress.completedMissions).toEqual(['city-1']);
   });
 
-  it('terminar las cuatro misiones recupera el mundo y abre el siguiente, una sola vez', () => {
+  it('derrotar al jefe (nivel 5) recupera el mundo y abre el siguiente, una sola vez', () => {
     const storage = new MemoryStorage();
     const s = new GameState(storage).load();
-    for (const n of [1, 2, 3]) expect(s.applyRoundResult(summary(), `city-${n}`).unlockedWorld).toBeNull();
+    for (const n of [1, 2, 3, 4]) expect(s.applyRoundResult(summary(), `city-${n}`).unlockedWorld).toBeNull();
+    expect(s.isMissionUnlocked('city', 4)).toBe(true);
     expect(s.progress.unlockedWorlds).toEqual(['city']);
-    expect(s.applyRoundResult(summary(), 'city-4')).toMatchObject({ worldCompleted: true, unlockedWorld: 'forest' });
-    expect(s.applyRoundResult(summary(), 'city-4')).toMatchObject({ worldCompleted: false, unlockedWorld: null });
+    expect(s.applyRoundResult(summary(), 'city-5')).toMatchObject({ worldCompleted: true, unlockedWorld: 'forest', newAbility: 'lupa' });
+    expect(s.applyRoundResult(summary(), 'city-5')).toMatchObject({ worldCompleted: false, unlockedWorld: null, newAbility: null });
     const again = new GameState(storage).load();
-    expect(again.worldStatus('city')).toMatchObject({ done: 4, clean: 1, completed: true });
+    expect(again.worldStatus('city')).toMatchObject({ done: 5, clean: 1, completed: true });
+    expect(again.abilities()).toEqual(['lupa']);
     expect(again.progress.unlockedWorlds).toEqual(['city', 'forest']);
     expect(again.isMissionUnlocked('forest', 0)).toBe(true);
   });
 
   it('el último mundo se completa sin abrir nada más y las misiones inexistentes se rechazan', () => {
     const s = fresh();
-    for (const n of [1, 2, 3]) s.applyRoundResult(summary(), `future-${n}`);
-    expect(s.applyRoundResult(summary(), 'future-4')).toMatchObject({ worldCompleted: true, unlockedWorld: null });
+    for (const n of [1, 2, 3, 4]) s.applyRoundResult(summary(), `future-${n}`);
+    expect(s.applyRoundResult(summary(), 'future-5')).toMatchObject({ worldCompleted: true, unlockedWorld: null, newAbility: 'estrella' });
     expect(() => s.applyRoundResult(summary(), 'luna-1')).toThrow();
     expect(() => s.applyRoundResult(summary(), 'city-9')).toThrow();
   });

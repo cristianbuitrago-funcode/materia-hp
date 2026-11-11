@@ -9,18 +9,30 @@ import { buildWorld } from '../worlds/index.js';
 import { BINS, getBin } from '../game/bins.js';
 import { BinTarget } from '../game/BinTarget.js';
 import { SortingRound, buildRound } from '../game/SortingEngine.js';
-import { prepareMission, openingLine, createHud, createGuide, createSparks, floatReward, finishMission } from '../game/missionUi.js';
+import { prepareMission, openingLine, createHud, createGuide, createSparks, floatReward, finishMission, showPlaceBanner, createAbilityBar } from '../game/missionUi.js';
 
 const HOME = { x: 1020, y: 335 };
 const BIN_X = [600, 1020, 1440];
 const WASTE_SIZE = 250;
 
 export class SortingScene extends Phaser.Scene {
-  constructor() { super('Sorting'); }
+  constructor(key = 'Sorting') { super(key); }
+
+  // ---- Puntos de extensión: el combate contra el jefe (BossScene) los redefine.
+  missionKind() { return 'sort'; }
+  get home() { return HOME; }                                   // dónde espera el residuo
+  spawnFrom() { return { x: this.home.x, y: -200, scale: 1 }; } // de dónde llega
+  hudOptions() { return { unit: 'Residuo' }; }
+  setupExtras() {}
+  afterLanding() { this.ready(); }
+  interceptChoice() { return false; }
+  afterCorrect() {}
+  afterWrong() {}
+  afterExplain() { return false; }
 
   create(data) {
     const setup = prepareMission(data);
-    if (!setup || setup.mission.kind !== 'sort') { this.scene.start('WorldMap'); return; }
+    if (!setup || setup.mission.kind !== this.missionKind()) { this.scene.start('WorldMap'); return; }
     enterScene(this);
     this.setup = setup;
     this.world = setup.world;
@@ -28,8 +40,9 @@ export class SortingScene extends Phaser.Scene {
     this.activeBins = mission.bins || BINS.map((b) => b.id);
     this.round = new SortingRound(
       buildRound(rules, Math.random, setup.pick),
-      { hintAfter: rules.hintAfter },
+      setup.roundOptions,
     );
+    this.viaOla = false;
     this.busy = true;
     this.waste = null;
     this.nameText = null;
@@ -39,11 +52,11 @@ export class SortingScene extends Phaser.Scene {
     this.prevFocus = null;
 
     // El escenario empieza tan limpio como lo dejó el jugador y se limpia más con cada acierto.
-    this.env = buildWorld(this, this.world.id, setup.cleanStart);
+    this.env = buildWorld(this, this.world.id, setup.cleanStart, setup.place);
     audio.setTheme(this.world.id);
     audio.startMusic();
 
-    this.hud = createHud(this, { unit: 'Residuo', onBack: () => this.exit() });
+    this.hud = createHud(this, { ...this.hudOptions(), onBack: () => this.exit() });
     this.hud.update(this.round);
     this.bins = BINS.map((bin, i) => new BinTarget(this, BIN_X[i], 800, bin, (id) => this.choose(id)));
     // En misiones de dos canecas, la que no participa queda apagada.
@@ -52,6 +65,9 @@ export class SortingScene extends Phaser.Scene {
     this.addExplainPanel();
     this.sparks = createSparks(this);
     if (setup.timed) this.addTimer();
+    this.abilityBar = createAbilityBar(this, setup, { lupa: () => this.useLupa(), ola: () => this.useOla() });
+    showPlaceBanner(this, setup);
+    this.setupExtras();
 
     // Atajos: teclas 1, 2 y 3 eligen la caneca blanca, negra y verde.
     this.input.keyboard.on('keydown', (e) => {
@@ -94,7 +110,8 @@ export class SortingScene extends Phaser.Scene {
     const box = this.add.container(W / 2, H / 2);
     box.add(panel(this, 0, 0, 1220, 740, { radius: 70 }));
     box.add(this.add.image(-410, 30, 'reciclin-wow').setDisplaySize(330, 380));
-    box.add(label(this, 150, -285, '¡Casi! Pensemos juntos', { size: 60, color: theme.hex.orange, stroke: '#17324D', strokeThickness: 10 }));
+    this.explainTitle = label(this, 150, -285, '¡Casi! Pensemos juntos', { size: 60, color: theme.hex.orange, stroke: '#17324D', strokeThickness: 10 });
+    box.add(this.explainTitle);
     this.explainImage = this.add.image(150, -170, 'waste-botella').setDisplaySize(130, 130);
     this.explainName = label(this, 150, -75, '', { size: 40 });
     this.explainText = label(this, 150, -40, '', { size: 38, bold: false, wrap: 760, lineSpacing: 6, origin: [0.5, 0] });
@@ -105,6 +122,31 @@ export class SortingScene extends Phaser.Scene {
     this.explainBox = box;
   }
 
+  // ---- Habilidades ganadas a los jefes
+
+  // Lupa de Reciclín: hace brillar la caneca correcta.
+  useLupa() {
+    if (this.busy || !this.waste) return false;
+    this.bins.find((b) => b.bin.id === this.round.current.bin).setHint(true);
+    this.say('¡Lupa de Reciclín! Mira la caneca que brilla.', 'happy');
+    return true;
+  }
+
+  // Ola limpiadora: lleva el residuo a su caneca y explica por qué.
+  useOla() {
+    if (this.busy || !this.waste) return false;
+    if (this.waste.inked) this.interceptChoice();
+    this.viaOla = true;
+    this.choose(this.round.current.bin);
+    return true;
+  }
+
+  ready() {
+    this.busy = false;
+    this.setBinsEnabled(true);
+    this.startIdle();
+  }
+
   setBinsEnabled(on) {
     for (const b of this.bins) b.enabled = on && this.activeBins.includes(b.bin.id);
   }
@@ -112,11 +154,13 @@ export class SortingScene extends Phaser.Scene {
   spawnWaste() {
     const w = this.round.current;
     this.hud.update(this.round);
-    const c = this.add.container(HOME.x, -200).setDepth(50);
+    const from = this.spawnFrom();
+    const c = this.add.container(from.x, from.y).setDepth(50).setScale(from.scale);
     const halo = this.add.circle(0, 0, 170, 0xffffff, 0.4);
     const img = this.add.image(0, 0, `waste-${w.id}`).setDisplaySize(WASTE_SIZE, WASTE_SIZE);
     c.add([halo, img]);
     c.halo = halo;
+    c.img = img;
     c.setSize(WASTE_SIZE + 60, WASTE_SIZE + 60);
     c.setInteractive({ draggable: true, useHandCursor: true });
     c.on('dragstart', () => {
@@ -141,12 +185,12 @@ export class SortingScene extends Phaser.Scene {
     });
     this.waste = c;
     if (this.nameText) this.nameText.destroy();
-    this.nameText = label(this, HOME.x, HOME.y + 175, w.name, { size: 50, color: '#FFFFFF', stroke: '#17324D', strokeThickness: 12 }).setDepth(40).setAlpha(0);
+    this.nameText = label(this, this.home.x, this.home.y + 175, w.name, { size: 50, color: '#FFFFFF', stroke: '#17324D', strokeThickness: 12 }).setDepth(40).setAlpha(0);
     this.tweens.add({ targets: this.nameText, alpha: 1, duration: 300, delay: 250 });
     audio.sfx('pop');
     this.tweens.add({
-      targets: c, y: HOME.y, duration: 520, ease: 'Bounce.out',
-      onComplete: () => { this.busy = false; this.setBinsEnabled(true); this.startIdle(); },
+      targets: c, x: this.home.x, y: this.home.y, scale: 1, duration: 520, ease: 'Bounce.out',
+      onComplete: () => this.afterLanding(),
     });
   }
 
@@ -154,19 +198,20 @@ export class SortingScene extends Phaser.Scene {
   startIdle() {
     if (this.idle) this.idle.remove();
     if (!this.waste) return;
-    this.idle = this.tweens.add({ targets: this.waste, y: HOME.y - 14, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.idle = this.tweens.add({ targets: this.waste, y: this.home.y - 14, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   }
 
   returnHome(onDone = null) {
     if (this.idle) { this.idle.remove(); this.idle = null; }
     this.tweens.add({
-      targets: this.waste, x: HOME.x, y: HOME.y, scale: 1, alpha: 1, duration: 320, ease: 'Back.out',
+      targets: this.waste, x: this.home.x, y: this.home.y, scale: 1, alpha: 1, duration: 320, ease: 'Back.out',
       onComplete: () => { if (onDone) onDone(); else this.startIdle(); },
     });
   }
 
   choose(binId) {
     if (this.busy || this._leaving || !this.waste) return;
+    if (this.interceptChoice(binId)) return;
     this.busy = true;
     this.dragging = false;
     this.setBinsEnabled(false);
@@ -197,7 +242,13 @@ export class SortingScene extends Phaser.Scene {
     this.hud.update(this.round);
     this.env.setClean(this.setup.cleanStart + (this.setup.cleanGain * this.round.index) / this.round.total, true);
     this.guide.character.hop(40);
-    this.say(`${result.firstTry ? '¡Muy bien!' : '¡Lo lograste!'} ${result.waste.fact}`, 'happy');
+    if (this.viaOla) {
+      this.viaOla = false;
+      this.say(`¡Ola limpiadora! Va en la caneca ${bin.bin.name.toLowerCase()}. ${result.waste.why}`, 'happy');
+    } else {
+      this.say(`${result.firstTry ? '¡Muy bien!' : '¡Lo lograste!'} ${result.waste.fact}`, 'happy');
+    }
+    this.afterCorrect(result, bin);
     this.time.delayedCall(result.finished ? 1900 : 2500, () => (result.finished ? this.finishRound() : this.spawnWaste()));
   }
 
@@ -205,7 +256,10 @@ export class SortingScene extends Phaser.Scene {
     bin.react(false);
     audio.sfx('oops');
     this.pendingHint = result.showHint;
+    this.afterWrong(result, bin);
     this.returnHome(() => {
+      // El Escudo de hojas perdona el error, pero la explicación se da igual.
+      this.explainTitle.setText(result.forgiven ? '¡Tu escudo te protegió!' : '¡Casi! Pensemos juntos');
       this.explainImage.setTexture(`waste-${result.waste.id}`).setDisplaySize(130, 130);
       this.explainName.setText(result.waste.name);
       this.explainText.setText(`No va en la caneca ${getBin(result.chosen).name.toLowerCase()}.\n${result.waste.why}`);
@@ -220,6 +274,7 @@ export class SortingScene extends Phaser.Scene {
   closeExplain() {
     if (!this.explain.visible) return;
     this.explain.setVisible(false);
+    if (this.afterExplain()) return;
     this.focus.focus(this.prevFocus instanceof BinTarget ? this.prevFocus : null); // quien juega con teclado sigue donde estaba
     this.busy = false;
     this.setBinsEnabled(true);

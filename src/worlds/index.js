@@ -11,10 +11,11 @@ import { visibleCounts } from './cleanliness.js';
 
 const BUILDERS = { city: buildCity, forest: buildForest, ocean: buildOcean, mountain: buildMountain, future: buildFuture };
 
-export function buildWorld(scene, worldId, clean = 0) {
+// `place` es el lugar del mundo (0 a 4): cada nivel tiene el suyo; el 4 es la guarida del jefe.
+export function buildWorld(scene, worldId, clean = 0, place = 0) {
   const build = BUILDERS[worldId];
   if (!build) throw new Error(`Mundo sin escenario: ${worldId}`);
-  const parts = build(scene);
+  const parts = build(scene, place);
   for (const o of [...parts.dirty, ...parts.clean]) {
     o._sx = o.scaleX; o._sy = o.scaleY; o._shown = true;
   }

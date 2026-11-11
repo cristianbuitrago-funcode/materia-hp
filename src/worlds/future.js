@@ -1,6 +1,8 @@
-// Mundo 5: El Futuro Sostenible. Energía limpia, casas con paneles solares y huertas.
+// Mundo 5: El Futuro Sostenible. Cinco lugares: el barrio solar, la huerta
+// comunitaria, la planta de reciclaje, la plaza central y la fábrica gris de Contaminator.
 import { W, H } from '../config/theme.js';
 import { drawSky, addSun, addClouds } from '../art/backgrounds.js';
+import { sign, veil, fountain, recyclingPlant } from './kit.js';
 import { gfx, bake, trashPile, litter, flower, tree, bush, smog, bird, butterfly, haze } from './kit.js';
 
 function turbine(scene, x, y, s = 1) {
@@ -62,7 +64,78 @@ function garden(scene, x, y) {
   });
 }
 
-export function buildFuture(scene) {
+// Estos elementos van delante de las colinas, así que cada lugar los crea él mismo y los convierte en imagen.
+const PLACES = [
+  // 0 · El barrio solar
+  (scene, BASE) => {
+    turbine(scene, 250, BASE - 60, 1.1);
+    turbine(scene, 1790, BASE - 90, 1);
+    bake(scene, [ecoHouse(scene, 560, BASE + 30, 0xd6f0ff, 0.95), ecoHouse(scene, 1330, BASE + 20, 0xffd6c9, 0.9), ecoHouse(scene, 1600, BASE + 36, 0xfff3d6, 1.05), tree(scene, 800, BASE + 30, 0.8)]);
+  },
+  // 1 · La huerta comunitaria
+  (scene, BASE) => {
+    turbine(scene, 250, BASE - 60, 1.1);
+    const greenhouse = gfx(scene, 1520, BASE + 20, (g) => {
+      g.fillStyle(0xbfe6fa, 0.75); g.fillEllipse(0, 0, 460, 400); g.fillStyle(0x4bbf7b, 1); g.fillRect(-240, 0, 480, 210);
+      g.lineStyle(7, 0xffffff, 0.95); g.strokeEllipse(0, 0, 460, 400); g.lineBetween(0, -200, 0, 0); g.lineBetween(-120, -170, -120, 0); g.lineBetween(120, -170, 120, 0); g.lineBetween(-224, -60, 224, -60);
+      g.fillStyle(0x43a047, 1); [-150, -60, 40, 140].forEach((x) => g.fillCircle(x, -18, 26));
+    });
+    const scarecrow = gfx(scene, 560, BASE + 60, (g) => {
+      g.fillStyle(0x8d6e63, 1); g.fillRect(-6, -200, 12, 200); g.fillRect(-80, -150, 160, 10);
+      g.fillStyle(0xef5350, 1); g.fillRoundedRect(-44, -156, 88, 80, 10);
+      g.fillStyle(0xffe0b2, 1); g.fillCircle(0, -186, 30); g.fillStyle(0xffd23f, 1); g.fillTriangle(-44, -206, 44, -206, 0, -250);
+    });
+    bake(scene, [greenhouse, scarecrow, garden(scene, 810, BASE + 190), garden(scene, 1240, BASE + 190), ...sign(scene, 812, BASE - 24, 'HUERTA')]);
+  },
+  // 2 · La planta de reciclaje
+  (scene, BASE) => {
+    turbine(scene, 250, BASE - 60, 1.1);
+    turbine(scene, 520, BASE - 100, 0.8);
+    const van = gfx(scene, 620, BASE + 70, (g) => {
+      g.fillStyle(0x000000, 0.15); g.fillEllipse(0, 4, 320, 30);
+      g.fillStyle(0x66bb6a, 1); g.fillRoundedRect(-150, -130, 300, 110, 22);
+      g.fillStyle(0xbfe6fa, 1); g.fillRoundedRect(40, -116, 90, 46, 10);
+      g.fillStyle(0xffffff, 1); g.fillCircle(-70, -76, 30); g.fillStyle(0x2e7d32, 1); g.fillCircle(-70, -76, 16);
+      g.fillStyle(0x263238, 1); g.fillCircle(-90, -14, 26); g.fillCircle(90, -14, 26);
+    });
+    bake(scene, [...recyclingPlant(scene, 1500, BASE + 30), van]);
+  },
+  // 3 · La plaza central
+  (scene, BASE) => {
+    turbine(scene, 250, BASE - 60, 1.1);
+    turbine(scene, 1790, BASE - 90, 1);
+    const tower = gfx(scene, 1500, BASE + 30, (g) => {
+      g.fillStyle(0xfff3d6, 1); g.fillRoundedRect(-70, -420, 140, 420, 8);
+      g.fillStyle(0xd1495b, 1); g.fillTriangle(-90, -416, 90, -416, 0, -520);
+      g.fillStyle(0xffffff, 1); g.fillCircle(0, -330, 48); g.lineStyle(6, 0x17324d, 1); g.strokeCircle(0, -330, 48); g.lineBetween(0, -330, 0, -362); g.lineBetween(0, -330, 24, -322);
+      g.fillStyle(0x8d6e63, 1); g.fillRoundedRect(-30, -90, 60, 90, 8);
+    });
+    const bikes = gfx(scene, 800, BASE + 180, (g) => {
+      g.lineStyle(7, 0x455a64, 1); g.strokeCircle(-40, -30, 28); g.strokeCircle(40, -30, 28);
+      g.lineStyle(7, 0x1e88e5, 1); g.lineBetween(-40, -30, -10, -70); g.lineBetween(-10, -70, 30, -70); g.lineBetween(30, -70, 40, -30); g.lineBetween(-10, -70, 6, -30); g.lineBetween(30, -70, 24, -90);
+    });
+    bake(scene, [tower, fountain(scene, 600, BASE + 70, 1.1), bikes, ecoHouse(scene, 1250, BASE + 20, 0xd6f0ff, 0.8), ...sign(scene, 1232, BASE - 24, 'PLAZA')]);
+  },
+  // 4 · La fábrica gris (guarida de Contaminator)
+  (scene, BASE) => {
+    const factory = gfx(scene, 620, BASE + 40, (g) => {
+      g.fillStyle(0x546e7a, 1); g.fillRect(-300, -260, 600, 260);
+      for (let i = 0; i < 4; i++) g.fillTriangle(-300 + i * 150, -260, -300 + i * 150, -340, -150 + i * 150, -260);
+      g.fillStyle(0x37474f, 1); [[-250, 480], [-150, 560], [-50, 430]].forEach(([x, h]) => g.fillRect(x, -h, 60, h - 260));
+      g.fillStyle(0xffd23f, 0.8); for (let x = -260; x < 260; x += 90) g.fillRect(x, -200, 50, 60);
+      g.fillStyle(0x263238, 1); g.fillRoundedRect(140, -130, 120, 130, 8);
+    });
+    const factory2 = gfx(scene, 1620, BASE + 30, (g) => {
+      g.fillStyle(0x607d8b, 1); g.fillRect(-220, -200, 440, 200);
+      g.fillStyle(0x455a64, 1); g.fillRect(90, -420, 70, 220); g.fillRect(-190, -200, 440, 20);
+      g.fillStyle(0xffd23f, 0.8); for (let x = -180; x < 60; x += 80) g.fillRect(x, -140, 44, 54);
+    });
+    bake(scene, [factory, factory2, veil(scene, 0x2c2540, 0.3)]);
+    smog(scene, 420, 150, 1.3, 0x4a4553, 0.9); smog(scene, 1760, 190, 1.2, 0x4a4553, 0.9);
+  },
+];
+
+export function buildFuture(scene, place = 0) {
   const BASE = 650;
   drawSky(scene, 0x4fc3f7, 0xfff6c9);
   addSun(scene, 1640, 190, 100);
@@ -80,12 +153,7 @@ export function buildFuture(scene) {
   for (let x = 30; x < W; x += 150) hills.fillRoundedRect(x, BASE + 140, 70, 7, 3);
   bake(scene, [hills]);
 
-  turbine(scene, 250, BASE - 60, 1.1);
-  turbine(scene, 520, BASE - 100, 0.8);
-  turbine(scene, 1790, BASE - 90, 1);
-  ecoHouse(scene, 960, BASE + 30, 0xfff3d6, 1.05);
-  ecoHouse(scene, 1330, BASE + 20, 0xffd6c9, 0.9);
-  tree(scene, 1560, BASE + 30, 0.9);
+  PLACES[place](scene, BASE);
 
   const dirty = [
     litter(scene, 1150, BASE + 110, 'paper', 1.5, 10), barren(scene, 700, BASE + 70, 1), litter(scene, 420, BASE + 110, 'bottle', 1.4, 75),

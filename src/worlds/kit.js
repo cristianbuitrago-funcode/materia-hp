@@ -2,6 +2,7 @@
 // Cada pieza se crea en (x, y) con su origen en la base, para poder
 // hacerla aparecer o desaparecer con una animación de escala.
 import { W, H } from '../config/theme.js';
+import { label } from '../ui/widgets.js';
 
 export function gfx(scene, x, y, draw) {
   const g = scene.add.graphics({ x, y });
@@ -27,6 +28,59 @@ export function bakeItem(scene, g, w, up, down = 20) {
   rt.draw(g, w / 2, up);
   g.destroy();
   return rt;
+}
+
+// Letrero con poste.
+export function sign(scene, x, y, text, color = 0x14804a) {
+  const t = label(scene, x, y - 150, text, { size: 30, color: '#FFFFFF' });
+  const w = t.width + 44;
+  const board = gfx(scene, x, y, (g) => {
+    g.fillStyle(0x7a5236, 1); g.fillRect(-7, -124, 14, 126);
+    g.fillStyle(0x000000, 0.2); g.fillRoundedRect(-w / 2 + 4, -176, w, 60, 14);
+    g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, -182, w, 60, 14);
+    g.lineStyle(5, 0xffffff, 1); g.strokeRoundedRect(-w / 2, -182, w, 60, 14);
+  });
+  return [board, t]; // el texto va después para quedar encima
+}
+
+// Velo de color sobre todo el escenario (atardecer, penumbra) para las guaridas de los jefes.
+export function veil(scene, color, alpha) {
+  return gfx(scene, 0, 0, (g) => { g.fillStyle(color, alpha); g.fillRect(0, 0, W, H); });
+}
+
+// Muro de ladrillo dibujado dentro de un Graphics existente.
+export function bricks(g, x, y, w, h, color = 0xb5654a, mortar = 0x8a4a36) {
+  g.fillStyle(color, 1); g.fillRect(x, y, w, h);
+  g.lineStyle(4, mortar, 0.9);
+  for (let row = 0; row * 36 < h; row++) {
+    const ry = y + row * 36;
+    g.lineBetween(x, ry, x + w, ry);
+    for (let bx = x + (row % 2 ? 40 : 0); bx < x + w; bx += 80) g.lineBetween(bx, ry, bx, Math.min(y + h, ry + 36));
+  }
+}
+
+// Fuente de agua (parque, plaza).
+export function fountain(scene, x, y, s = 1) {
+  return gfx(scene, x, y, (g) => {
+    g.fillStyle(0x000000, 0.14); g.fillEllipse(0, 6 * s, 260 * s, 36 * s);
+    g.fillStyle(0xb0bec5, 1); g.fillRoundedRect(-110 * s, -44 * s, 220 * s, 48 * s, 16 * s);
+    g.fillStyle(0x4fc3f7, 1); g.fillEllipse(0, -44 * s, 200 * s, 30 * s);
+    g.fillStyle(0x90a4ae, 1); g.fillRect(-10 * s, -110 * s, 20 * s, 70 * s); g.fillEllipse(0, -110 * s, 80 * s, 18 * s);
+    g.fillStyle(0xb3e5fc, 0.9); g.fillEllipse(0, -150 * s, 16 * s, 70 * s); g.fillEllipse(-34 * s, -92 * s, 12 * s, 50 * s); g.fillEllipse(34 * s, -92 * s, 12 * s, 50 * s);
+  });
+}
+
+// Planta de reciclaje (montaña recuperada, futuro).
+export function recyclingPlant(scene, x, y) {
+  const body = gfx(scene, x, y, (g) => {
+    g.fillStyle(0x000000, 0.15); g.fillEllipse(0, 0, 520, 40);
+    g.fillStyle(0xeceff1, 1); g.fillRoundedRect(-230, -210, 460, 210, 10);
+    g.fillStyle(0x1e88e5, 1); g.fillRect(-230, -210, 460, 44);
+    for (let i = 0; i < 3; i++) g.fillTriangle(-230 + i * 153, -210, -230 + i * 153, -276, -77 + i * 153, -210);
+    g.fillStyle(0x90a4ae, 1); g.fillRoundedRect(-200, -110, 130, 110, 6);
+    g.fillStyle(0xbfe6fa, 1); g.fillRoundedRect(-40, -130, 70, 60, 6); g.fillRoundedRect(60, -130, 70, 60, 6); g.fillRoundedRect(150, -130, 56, 60, 6);
+  });
+  return [body, label(scene, x, y - 188, 'RECICLAJE', { size: 30, color: '#FFFFFF' })];
 }
 
 // Número "aleatorio" repetible (el mismo escenario en cada partida).

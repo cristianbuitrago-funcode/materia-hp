@@ -77,10 +77,10 @@ export class WorldMapScene extends Phaser.Scene {
     label(this, x, y + 172, world.short, { size: 46, color: '#FFFFFF', stroke: unlocked ? '#17324D' : '#5F7183', strokeThickness: 12 });
 
     if (unlocked) {
-      // Un punto por misión: verde brillante si ya se terminó.
+      // Un punto por nivel: amarillo si ya se terminó.
       const { done, total } = gameState.worldStatus(world.id);
       for (let i = 0; i < total; i++) {
-        this.add.circle(x - 54 + i * 36, y + 232, 13, i < done ? 0xffd23f : 0x1f5d3c, i < done ? 1 : 0.35).setStrokeStyle(4, 0xffffff, i < done ? 1 : 0.5);
+        this.add.circle(x - 72 + i * 36, y + 232, 13, i < done ? 0xffd23f : 0x1f5d3c, i < done ? 1 : 0.35).setStrokeStyle(4, 0xffffff, i < done ? 1 : 0.5);
       }
       this.tweens.add({ targets: b, y: y - 12, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     }

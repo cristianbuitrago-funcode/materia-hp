@@ -10,7 +10,7 @@ import { audio } from '../core/AudioManager.js';
 import { buildWorld } from '../worlds/index.js';
 import { getBin } from '../game/bins.js';
 import { ChoiceRound, buildCheckItems, buildQuizItems } from '../game/SortingEngine.js';
-import { prepareMission, openingLine, createHud, createGuide, createSparks, floatReward, finishMission } from '../game/missionUi.js';
+import { prepareMission, openingLine, createHud, createGuide, createSparks, floatReward, finishMission, showPlaceBanner } from '../game/missionUi.js';
 
 const CX = 1170; // centro de la zona de juego (a la derecha del guía)
 const BIN_HEX = { white: '#1565C0', black: '#23272D', green: '#0F6A3A' };
@@ -27,13 +27,13 @@ export class ChallengeScene extends Phaser.Scene {
     const items = this.kind === 'check'
       ? buildCheckItems(setup.rules, Math.random, setup.pick)
       : buildQuizItems(setup.rules, Math.random, { topics: setup.mission.topics });
-    this.round = new ChoiceRound(items, { hintAfter: setup.rules.hintAfter });
+    this.round = new ChoiceRound(items, setup.roundOptions);
     this.busy = true;
     this.content = [];
     this.options = [];
     this.nextBtn = null;
 
-    this.env = buildWorld(this, setup.world.id, setup.cleanStart);
+    this.env = buildWorld(this, setup.world.id, setup.cleanStart, setup.place);
     audio.setTheme(setup.world.id);
     audio.startMusic();
 
@@ -51,6 +51,7 @@ export class ChallengeScene extends Phaser.Scene {
     this.onDefaultAction = () => { if (this.nextBtn) this.advance(); };
 
     this.guide.say(openingLine(setup), 'happy');
+    showPlaceBanner(this, setup);
     this.showItem();
   }
 
@@ -113,6 +114,12 @@ export class ChallengeScene extends Phaser.Scene {
     const result = this.round.attempt(i);
     if (!result.correct) {
       audio.sfx('oops');
+      if (result.forgiven) { // Escudo de hojas: el error no cuenta
+        this.tweens.add({ targets: button, x: button.x + 14, duration: 55, yoyo: true, repeat: 3 });
+        this.guide.say('¡Tu escudo de hojas te protegió! Ese error no cuenta. Prueba otra opción.', 'happy');
+        button.setEnabled(false);
+        return;
+      }
       button.setEnabled(false); // esa opción queda descartada; se puede probar otra
       this.tweens.add({ targets: button, x: button.x + 14, duration: 55, yoyo: true, repeat: 3 });
       this.guide.say('¡Casi! Piensa otra vez y prueba otra opción.', 'wow');

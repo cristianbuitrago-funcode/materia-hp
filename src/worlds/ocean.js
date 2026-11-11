@@ -1,6 +1,8 @@
-// Mundo 3: El Océano en Peligro. Escenario submarino con corales, peces y una tortuga.
+// Mundo 3: El Océano en Peligro. Cinco lugares: la orilla, el muelle,
+// el arrecife, mar abierto y la fosa de Plastipulpo.
 import { W, H } from '../config/theme.js';
 import { drawSky } from '../art/backgrounds.js';
+import { sign, veil } from './kit.js';
 import { gfx, bake, litter, fish, haze, rnd } from './kit.js';
 
 function coral(scene, x, y, color, s = 1) {
@@ -48,7 +50,73 @@ function drifting(scene, obj) {
   return obj;
 }
 
-export function buildOcean(scene) {
+const PLACES = [
+  // 0 · La orilla
+  (scene, back, SAND) => {
+    const boat = gfx(scene, 1480, 250, (g) => {
+      g.fillStyle(0x8d6e63, 1); g.fillPoints([{ x: -190, y: -60 }, { x: 190, y: -60 }, { x: 130, y: 20 }, { x: -130, y: 20 }], true);
+      g.fillStyle(0x6d4c41, 1); g.fillRect(-190, -60, 380, 14);
+      g.lineStyle(6, 0x455a64, 1); g.lineBetween(120, 20, 150, SAND - 250 + 20);
+    });
+    const anchor = gfx(scene, 1632, SAND + 40, (g) => {
+      g.lineStyle(12, 0x455a64, 1); g.lineBetween(0, -90, 0, -10); g.lineBetween(-30, -70, 30, -70);
+      g.beginPath(); g.arc(0, -40, 40, 0.2, Math.PI - 0.2); g.strokePath(); g.strokeCircle(0, -100, 12);
+    });
+    const star = (x, y, c) => gfx(scene, x, y, (g) => {
+      g.fillStyle(c, 1);
+      for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2 - Math.PI / 2; g.fillTriangle(Math.cos(a) * 44, Math.sin(a) * 44, Math.cos(a + 1.9) * 16, Math.sin(a + 1.9) * 16, Math.cos(a - 1.9) * 16, Math.sin(a - 1.9) * 16); }
+      g.fillCircle(0, 0, 18);
+    });
+    return [boat, anchor, star(810, SAND + 190, 0xff8a3d), star(1240, SAND + 250, 0xef5350)];
+  },
+  // 1 · El muelle
+  (scene, back, SAND) => {
+    const post = (x) => gfx(scene, x, SAND + 70, (g) => {
+      g.fillStyle(0x6d4c41, 1); g.fillRect(-26, -640, 52, 640);
+      g.fillStyle(0x8d6e63, 1); g.fillRect(-26, -640, 16, 640);
+      g.fillStyle(0x2e9e6b, 0.9); g.fillEllipse(0, -30, 70, 40); g.fillEllipse(-10, -220, 40, 26);
+    });
+    const beam = gfx(scene, 0, 0, (g) => { g.fillStyle(0x5d4037, 1); g.fillRect(380, 196, 1420, 30); g.lineStyle(6, 0xd7b899, 1); g.lineBetween(470, 240, 760, 300); g.lineBetween(760, 300, 1270, 240); });
+    return [beam, post(470), post(770), post(1270), post(1710)];
+  },
+  // 2 · El arrecife
+  (scene, back, SAND) => {
+    const arch = gfx(scene, 500, SAND + 60, (g) => {
+      g.fillStyle(0x4d7191, 1); g.fillEllipse(0, -120, 420, 420);
+      g.fillStyle(0x1a6bb0, 1); g.fillEllipse(0, -70, 220, 260); // hueco del arco (color del agua)
+      g.fillStyle(0x4d7191, 1); g.fillRect(-210, -40, 420, 60);
+    });
+    const tubes = (x, c) => gfx(scene, x, SAND + 60, (g) => {
+      [[-40, 120], [0, 170], [42, 100]].forEach(([dx, h]) => { g.fillStyle(c, 1); g.fillRoundedRect(dx - 20, -h, 40, h, 18); g.fillStyle(0x000000, 0.25); g.fillEllipse(dx, -h + 6, 26, 12); });
+    });
+    const rock = gfx(scene, 1700, SAND + 70, (g) => { g.fillStyle(0x4d7191, 1); g.fillEllipse(0, -70, 320, 240); g.fillStyle(0x6289a8, 1); g.fillEllipse(-40, -110, 150, 90); });
+    return [arch, rock, tubes(790, 0xffd166), tubes(1250, 0xf48fb1)];
+  },
+  // 3 · Mar abierto
+  (scene, back, SAND) => {
+    const whale = gfx(scene, 560, 360, (g) => {
+      g.fillStyle(0x0b4a86, 0.75); g.fillEllipse(0, 0, 420, 150); g.fillTriangle(-190, 0, -300, -70, -300, 60); g.fillTriangle(40, -60, 90, -120, 110, -50);
+    });
+    const ship = gfx(scene, 1540, SAND + 70, (g) => {
+      g.fillStyle(0x5d4037, 1); g.fillPoints([{ x: -230, y: -150 }, { x: 200, y: -110 }, { x: 150, y: 0 }, { x: -180, y: 0 }], true);
+      g.fillStyle(0x4e342e, 1); g.fillRect(-20, -330, 16, 200); g.fillTriangle(-4, -320, 110, -250, -4, -220);
+      g.fillStyle(0x0b3f7d, 1); g.fillCircle(-100, -80, 20); g.fillCircle(-20, -74, 20); g.fillCircle(60, -66, 20);
+    });
+    return [whale, ship];
+  },
+  // 4 · La fosa (guarida de Plastipulpo)
+  (scene, back, SAND) => {
+    const wall = (flip) => gfx(scene, flip ? W : 0, 0, (g) => {
+      const k = flip ? -1 : 1;
+      g.fillStyle(0x12233f, 1); g.fillPoints([{ x: 0, y: 0 }, { x: 420 * k, y: 0 }, { x: 300 * k, y: 260 }, { x: 380 * k, y: 520 }, { x: 240 * k, y: SAND + 60 }, { x: 0, y: SAND + 60 }], true);
+      g.fillStyle(0x1c3559, 1); g.fillPoints([{ x: 0, y: 200 }, { x: 250 * k, y: 300 }, { x: 180 * k, y: 600 }, { x: 0, y: 700 }], true);
+    });
+    const vent = (x) => gfx(scene, x, SAND + 60, (g) => { g.fillStyle(0x263238, 1); g.fillTriangle(-70, 0, 70, 0, 0, -120); g.fillStyle(0x9bc53d, 0.5); g.fillCircle(0, -150, 30); g.fillCircle(-16, -210, 20); g.fillCircle(14, -260, 14); });
+    return [wall(false), wall(true), vent(780), vent(1260), veil(scene, 0x050b24, 0.38)];
+  },
+];
+
+export function buildOcean(scene, place = 0) {
   const SAND = 700;
   drawSky(scene, 0x25a4e6, 0x0b3f7d);
   // Rayos de luz desde la superficie
@@ -67,7 +135,7 @@ export function buildOcean(scene) {
   back.fillStyle(0xd4b376, 1);
   for (let i = 0; i < 14; i++) back.fillEllipse(80 + i * 140 + rnd(i) * 60, SAND + 130 + rnd(i + 5) * 220, 70, 12);
   back.fillStyle(0x6d7f8f, 1); back.fillEllipse(1840, SAND + 40, 220, 150); back.fillEllipse(40, SAND + 50, 200, 130);
-  bake(scene, [back]);
+  bake(scene, [back, ...PLACES[place](scene, back, SAND)]);
 
   seaweed(scene, 150, SAND + 50, 1.2);
   seaweed(scene, 1790, SAND + 40, 1.3, 0x3fae6a);

@@ -1,3 +1,5 @@
+import { LEVEL_MODS } from '../config/missions.js';
+
 // Dificultad adaptativa: además del modo de edad, el juego mira cómo le ha ido
 // al jugador en sus últimas respuestas y ajusta el tamaño de la ronda, la
 // dificultad de los residuos y cuándo aparece la pista.
@@ -34,6 +36,17 @@ export function adaptRules(ageMode, recent = []) {
     size: clamp(base.size + 2 * level, 4, 12),
     maxTier: clamp(base.maxTier + level, 1, 3),
     hintAfter: clamp(base.hintAfter + level, 1, 4),
+  };
+}
+
+// Reglas finales de un nivel: edad + desempeño reciente + número de nivel.
+export function levelRules(ageMode, recent, levelIndex, mods = LEVEL_MODS) {
+  const rules = adaptRules(ageMode, recent);
+  const mod = mods[levelIndex] || { size: 0, tier: 0 };
+  return {
+    ...rules,
+    size: clamp(rules.size + mod.size, 4, 14),
+    maxTier: clamp(rules.maxTier + mod.tier, 1, 3),
   };
 }
 

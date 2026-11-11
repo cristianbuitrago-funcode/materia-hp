@@ -1,8 +1,9 @@
-// Mundo 4: La Montaña de Residuos. Un botadero que se encoge hasta
-// convertirse en una colina verde con una planta de reciclaje.
+// Mundo 4: La Montaña de Residuos. Un botadero que se encoge hasta volverse
+// una colina verde. Cinco lugares: la entrada, el taller de reúso, la banda
+// de separación, la cima y el cráter de Basurón.
 import { W, H } from '../config/theme.js';
 import { drawSky, addClouds } from '../art/backgrounds.js';
-import { label } from '../ui/widgets.js';
+import { sign, veil, recyclingPlant } from './kit.js';
 import { gfx, bake, bakeItem, trashPile, litter, flower, tree, smog, bird, haze, rnd } from './kit.js';
 
 const BITS = [0x90caf9, 0xffe082, 0xef9a9a, 0xce93d8, 0xa5d6a7, 0xffffff, 0xffab91, 0xb0bec5];
@@ -32,20 +33,6 @@ function heap(scene, x, y, w, h, seed) {
   }), w + 60, h + 60);
 }
 
-function recyclingPlant(scene, x, y) {
-  const c = scene.add.container(x, y);
-  c.add(gfx(scene, 0, 0, (g) => {
-    g.fillStyle(0x000000, 0.15); g.fillEllipse(0, 0, 520, 40);
-    g.fillStyle(0xeceff1, 1); g.fillRoundedRect(-230, -210, 460, 210, 10);
-    g.fillStyle(0x1e88e5, 1); g.fillRect(-230, -210, 460, 44);
-    for (let i = 0; i < 3; i++) g.fillTriangle(-230 + i * 153, -210, -230 + i * 153, -276, -77 + i * 153, -210);
-    g.fillStyle(0x90a4ae, 1); g.fillRoundedRect(-200, -110, 130, 110, 6);
-    g.fillStyle(0xbfe6fa, 1); g.fillRoundedRect(-40, -130, 70, 60, 6); g.fillRoundedRect(60, -130, 70, 60, 6); g.fillRoundedRect(150, -130, 56, 60, 6);
-  }));
-  c.add(label(scene, 0, -188, 'RECICLAJE', { size: 30, color: '#FFFFFF' }));
-  return c;
-}
-
 function compostBin(scene, x, y, s = 1) {
   return gfx(scene, x, y, (g) => {
     g.fillStyle(0x8d6e63, 1); g.fillRoundedRect(-60 * s, -80 * s, 120 * s, 80 * s, 8 * s);
@@ -55,7 +42,68 @@ function compostBin(scene, x, y, s = 1) {
   });
 }
 
-export function buildMountain(scene) {
+const PLACES = [
+  // 0 · La entrada
+  (scene, BASE) => {
+    const fence = gfx(scene, 0, BASE, (g) => {
+      g.lineStyle(5, 0x78909c, 1); g.lineBetween(0, -60, W, -60); g.lineBetween(0, -30, W, -30);
+      g.fillStyle(0x546e7a, 1); for (let x = 20; x < W; x += 120) g.fillRect(x, -90, 10, 92);
+    });
+    const truck = gfx(scene, 1690, BASE + 60, (g) => {
+      g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 4, 400, 34);
+      g.fillStyle(0x78909c, 1); g.fillRoundedRect(-190, -170, 250, 150, 10);
+      g.fillStyle(0xff8a3d, 1); g.fillRoundedRect(64, -130, 120, 110, 12);
+      g.fillStyle(0xbfe6fa, 1); g.fillRoundedRect(110, -116, 62, 44, 6);
+      g.fillStyle(0x263238, 1); g.fillCircle(-120, -14, 30); g.fillCircle(120, -14, 30);
+      g.fillStyle(0x90a4ae, 1); g.fillCircle(-120, -14, 12); g.fillCircle(120, -14, 12);
+    });
+    return [fence, truck, ...sign(scene, 812, BASE - 24, 'BOTADERO', 0x6d4c41)];
+  },
+  // 1 · El taller de reúso
+  (scene, BASE) => {
+    const shed = gfx(scene, 1560, BASE + 20, (g) => {
+      g.fillStyle(0x26a69a, 1); g.fillRoundedRect(-210, -220, 420, 220, 8);
+      g.fillStyle(0xef5350, 1); g.fillTriangle(-240, -216, 240, -216, 0, -320);
+      g.fillStyle(0x004d40, 1); g.fillRect(-190, -150, 170, 8); g.fillRect(-190, -80, 170, 8);
+      [[-170, 0xffd166], [-120, 0x90caf9], [-70, 0xf48fb1]].forEach(([x, c]) => { g.fillStyle(c, 1); g.fillRoundedRect(x, -190, 34, 40, 8); g.fillRoundedRect(x, -120, 34, 40, 8); });
+      g.fillStyle(0x8d6e63, 1); g.fillRoundedRect(40, -130, 100, 130, 8);
+    });
+    const tires = gfx(scene, 470, BASE + 50, (g) => {
+      [0, -44, -88].forEach((y) => { g.fillStyle(0x263238, 1); g.fillEllipse(0, y - 20, 150, 50); g.fillStyle(0x90a4ae, 1); g.fillEllipse(0, y - 22, 60, 16); });
+    });
+    return [shed, tires, ...sign(scene, 1560, BASE - 120, 'TALLER', 0x00796b)];
+  },
+  // 2 · La banda de separación
+  (scene, BASE) => {
+    const belt = gfx(scene, 0, BASE - 40, (g) => {
+      g.fillStyle(0x546e7a, 1); for (let x = 460; x < 1640; x += 230) g.fillRect(x, 0, 16, 70);
+      g.fillStyle(0x263238, 1); g.fillRoundedRect(400, -34, 1260, 40, 20);
+      g.fillStyle(0x90a4ae, 1); for (let x = 430; x < 1650; x += 70) g.fillCircle(x, -14, 12);
+      [[520, 0x90caf9], [760, 0xffe082], [1280, 0xef9a9a], [1500, 0xa5d6a7]].forEach(([x, c]) => { g.fillStyle(c, 1); g.fillRoundedRect(x - 22, -66, 44, 32, 6); });
+    });
+    const hopper = (x, c) => gfx(scene, x, BASE + 40, (g) => { g.fillStyle(c, 1); g.fillPoints([{ x: -80, y: -120 }, { x: 80, y: -120 }, { x: 46, y: 0 }, { x: -46, y: 0 }], true); g.fillStyle(0x000000, 0.2); g.fillRect(-80, -120, 160, 14); });
+    return [belt, hopper(1760, 0x1e88e5), hopper(470, 0x43a047)];
+  },
+  // 3 · La cima
+  (scene, BASE) => {
+    const mist = gfx(scene, 0, BASE - 10, (g) => { g.fillStyle(0xffffff, 0.75); [[160, 300], [520, 380], [1420, 360], [1780, 320]].forEach(([x, w]) => { g.fillEllipse(x, 0, w, 70); g.fillEllipse(x + 60, -26, w * 0.6, 60); }); });
+    const antenna = gfx(scene, 1720, BASE + 20, (g) => {
+      g.lineStyle(8, 0x546e7a, 1); g.lineBetween(-50, 0, 0, -360); g.lineBetween(50, 0, 0, -360);
+      [[-38, -80], [-26, -170], [-13, -260]].forEach(([x, y]) => g.lineBetween(x, y, -x, y));
+      g.fillStyle(0xef5350, 1); g.fillCircle(0, -366, 12);
+    });
+    const flag = gfx(scene, 420, BASE + 30, (g) => { g.fillStyle(0x90a4ae, 1); g.fillRect(-5, -260, 10, 260); g.fillStyle(0x2bb673, 1); g.fillTriangle(5, -260, 110, -225, 5, -190); });
+    return [mist, antenna, flag];
+  },
+  // 4 · El cráter (guarida de Basurón)
+  (scene, BASE) => {
+    const goo = gfx(scene, 0, 0, (g) => { g.fillStyle(0x9bc53d, 0.9); [[480, BASE + 140, 280], [1500, BASE + 170, 340], [820, BASE + 260, 180]].forEach(([x, y, w]) => g.fillEllipse(x, y, w, w * 0.22)); g.fillStyle(0xcfe87a, 0.9); g.fillEllipse(460, BASE + 134, 90, 16); g.fillEllipse(1540, BASE + 164, 120, 20); });
+    const spike = (x, s) => gfx(scene, x, BASE + 30, (g) => { g.fillStyle(0x4e3b31, 1); g.fillTriangle(-90 * s, 0, 90 * s, 0, 20 * s, -330 * s); g.fillStyle(0x6d5548, 1); g.fillTriangle(-90 * s, 0, -10 * s, 0, 20 * s, -330 * s); });
+    return [goo, spike(180, 1), spike(1780, 1.15), spike(380, 0.6), veil(scene, 0x2b1a12, 0.3)];
+  },
+];
+
+export function buildMountain(scene, place = 0) {
   const BASE = 660;
   drawSky(scene, 0xa99bc9, 0xf6dcb2);
   addClouds(scene, 3, { yMax: 220, tint: 0xfff1dc, alpha: 0.8 });
@@ -66,7 +114,7 @@ export function buildMountain(scene) {
   far.fillStyle(0x7b6b5c, 1);
   for (let i = 0; i < 12; i++) far.fillEllipse(100 + i * 160 + rnd(i) * 70, BASE + 110 + rnd(i + 4) * 260, 120, 16);
 
-  bake(scene, [far]);
+  bake(scene, [far, ...PLACES[place](scene, BASE)]);
 
   // Se crea todo en orden de dibujo (del fondo al frente); el orden en que las
   // cosas aparecen o desaparecen al limpiar lo dan las listas `dirty` y `clean`.
@@ -77,7 +125,7 @@ export function buildMountain(scene) {
     g.fillStyle(0x6fcc8b, 1); g.fillEllipse(-200, -60, 700, 300);
     g.fillStyle(0x8a7a6a, 1); g.fillRect(-760, 4, 1520, 300);
   });
-  const plant = recyclingPlant(scene, 1440, BASE - 150);
+  const plant = scene.add.container(1440, BASE - 150, recyclingPlant(scene, 0, 0));
   const treeA = tree(scene, 600, BASE - 150, 0.9);
   const treeB = tree(scene, 1800, BASE - 40, 0.8, 0x3fae6a, 0x8be04e);
 

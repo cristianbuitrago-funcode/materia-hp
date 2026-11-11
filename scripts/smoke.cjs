@@ -104,7 +104,7 @@ async function main() {
     await page.waitForTimeout(900);
     await shot('09-misiones');
     // La misión 3 está cerrada hasta terminar las anteriores.
-    const ROW = (n) => [1300, 524 + (n - 1) * 96];
+    const ROW = (n) => [1300, 510 + (n - 1) * 80]; // filas de la lista de niveles
     await click(...ROW(3));
     await page.waitForTimeout(600);
     await expectScenes(['MissionIntro']);
@@ -115,7 +115,7 @@ async function main() {
       const s = window.__ECOMISION__.scene.getScene('Sorting');
       return { id: s.setup.mission.id, focus: s.round.wastes.filter((w) => s.setup.mission.focus.includes(w.id)).length, timed: s.setup.timed };
     });
-    if (m1.id !== 'city-1' || m1.focus < 5 || m1.timed) throw new Error(`Misión 1: ${JSON.stringify(m1)}`);
+    if (m1.id !== 'city-1' || m1.focus < 4 || m1.timed) throw new Error(`Misión 1: ${JSON.stringify(m1)}`);
     const sorting = () => page.evaluate(() => {
       const s = window.__ECOMISION__.scene.getScene('Sorting');
       return { busy: s.busy, bin: s.round.current && s.round.current.bin, index: s.round.index, total: s.round.total, explain: s.explain.visible, hint: s.round.showHint };
@@ -131,7 +131,7 @@ async function main() {
     await waitReady();
     await shot('09b-clasificar');
     let st = await sorting();
-    if (st.total !== 8 || st.index !== 0) throw new Error(`Ronda inesperada: ${JSON.stringify(st)}`);
+    if (st.total !== 6 || st.index !== 0) throw new Error(`Ronda inesperada: ${JSON.stringify(st)}`);
 
     // Residuo 1: error tocando una caneca equivocada → explicación → reintento arrastrando.
     const wrong = Object.keys(BIN_X).find((b) => b !== st.bin);
@@ -174,7 +174,7 @@ async function main() {
     await page.keyboard.press('Enter');
     await waitIndex(3);
     console.log('  ✓     teclado: atajos numéricos y Tab + Enter');
-    for (let i = 3; i < 8; i++) {
+    for (let i = 3; i < 6; i++) {
       await waitReady();
       st = await sorting();
       await click(BIN_X[st.bin], 760);
@@ -184,14 +184,14 @@ async function main() {
     await page.waitForTimeout(1800);
     await shot('09d-resultados');
     const prog = await page.evaluate(() => JSON.parse(localStorage.getItem('ecomision.save.v1')).progress);
-    const want = { experience: 85, ecoCoins: 20, roundsPlayed: 1, correctAnswers: 8, incorrectAnswers: 1 };
+    const want = { experience: 65, ecoCoins: 16, roundsPlayed: 1, correctAnswers: 6, incorrectAnswers: 1 };
     for (const [k, v] of Object.entries(want)) if (prog[k] !== v) throw new Error(`Progreso guardado: ${k}=${prog[k]}, se esperaba ${v}`);
-    if (prog.learnedWasteTypes.length !== 8) throw new Error('No se guardaron los 8 residuos aprendidos');
+    if (prog.learnedWasteTypes.length !== 6) throw new Error('No se guardaron los 6 residuos aprendidos');
     // Terminar la misión 1 limpia una cuarta parte de la ciudad, abre la misión 2 y aún no abre el bosque.
     const m = prog.missionProgress['city-1'];
-    if (!m || m.stars !== 3 || m.plays !== 1) throw new Error(`Misión city-1: ${JSON.stringify(m)}`);
+    if (!m || m.stars !== 2 || m.plays !== 1) throw new Error(`Misión city-1: ${JSON.stringify(m)}`);
     if (JSON.stringify(prog.unlockedWorlds) !== '["city"]') throw new Error(`Mundos abiertos: ${prog.unlockedWorlds}`);
-    if (prog.recentAnswers.length !== 8 || prog.recentAnswers.filter((x) => !x).length !== 1) throw new Error(`Respuestas recientes: ${prog.recentAnswers}`);
+    if (prog.recentAnswers.length !== 6 || prog.recentAnswers.filter((x) => !x).length !== 1) throw new Error(`Respuestas recientes: ${prog.recentAnswers}`);
     if (Object.keys(prog.trouble).length !== 1) throw new Error(`Residuos por repasar: ${JSON.stringify(prog.trouble)}`);
 
     // "Siguiente misión" lleva a la misión 2, que repasa el residuo fallado; salir a mitad no guarda ni castiga.
@@ -201,7 +201,7 @@ async function main() {
       const s = window.__ECOMISION__.scene.getScene('Sorting');
       return { id: s.setup.mission.id, clean: s.env.clean, ids: s.round.wastes.map((w) => w.id) };
     });
-    if (m2.id !== 'city-2' || m2.clean !== 0.25) throw new Error(`Misión 2: ${JSON.stringify(m2)}`);
+    if (m2.id !== 'city-2' || m2.clean !== 0.2) throw new Error(`Misión 2: ${JSON.stringify(m2)}`);
     if (!m2.ids.includes(Object.keys(prog.trouble)[0])) throw new Error(`La misión 2 no repasa ${Object.keys(prog.trouble)[0]}: ${m2.ids}`);
     await waitReady();
     await page.keyboard.press('Escape');
@@ -312,8 +312,8 @@ async function main() {
     await page.waitForTimeout(600);
     await shot('16-pregunta');
     ch = await challenge();
-    if (ch.kind !== 'quiz' || ch.total !== 4) throw new Error(`Preguntas: ${JSON.stringify(ch)}`);
-    for (let i = 0; i < 4; i++) {
+    if (ch.kind !== 'quiz' || ch.total !== 5) throw new Error(`Preguntas: ${JSON.stringify(ch)}`);
+    for (let i = 0; i < 5; i++) {
       await waitItem(i);
       ch = await challenge();
       await page.keyboard.press(String(ch.answer + 1));
@@ -322,12 +322,90 @@ async function main() {
       await page.keyboard.press('Enter');
     }
     await waitScene('Results');
+    save = await page.evaluate(() => JSON.parse(localStorage.getItem('ecomision.save.v1')));
+    if (save.progress.missionProgress['ocean-4'].stars !== 3) throw new Error(`ocean-4: ${JSON.stringify(save.progress.missionProgress['ocean-4'])}`);
+    // Con cuatro niveles hechos aún falta el jefe: ni mundo nuevo, ni insignia del océano.
+    if (save.progress.unlockedWorlds.includes('mountain') || save.rewards.unlockedBadges.includes('ocean')) throw new Error('El océano se dio por recuperado sin derrotar al jefe');
+    console.log('  ✓     preguntas completas (falta el jefe para recuperar el océano)');
+
+    // ---- Nivel 5: jefe final Plastipulpo.
+    await page.keyboard.press('Enter'); // Siguiente nivel
+    await waitScene('Boss');
+    const boss = () => page.evaluate(() => {
+      const s = window.__ECOMISION__.scene.getScene('Boss');
+      const cur = s.round.current;
+      const bins = {}; for (const b of s.bins) bins[b.bin.id] = Math.round(b.x);
+      return { index: s.round.index, total: s.round.total, shields: s.shields, escaped: s.escaped, inked: !!(s.waste && s.waste.inked), bin: cur && cur.bin, bins, explain: s.explain.visible };
+    });
+    const bossReady = () => page.waitForFunction(() => {
+      const s = window.__ECOMISION__.scene.getScene('Boss');
+      return s.scene.isActive() && !s.busy && !s.explain.visible && !!s.waste;
+    }, null, { timeout: 40000 });
+    const bossIndex = (n) => page.waitForFunction((k) => window.__ECOMISION__.scene.getScene('Boss').round.index === k, n, { timeout: 40000 });
+    await bossReady();
+    await page.waitForTimeout(800);
+    await shot('18-jefe');
+    let bs = await boss();
+    // Tras once respuestas casi perfectas la dificultad adaptativa sube: el jefe tiene 10 de vida.
+    if (bs.total !== 10 || bs.shields !== 3) throw new Error(`Jefe: ${JSON.stringify(bs)}`);
+    // Un error cuesta un escudo y no le quita vida al jefe.
+    await click(bs.bins[Object.keys(bs.bins).find((b) => b !== bs.bin)], 760);
+    await page.waitForFunction(() => window.__ECOMISION__.scene.getScene('Boss').explain.visible, null, { timeout: 40000 });
+    await page.keyboard.press('Enter');
+    await bossReady();
+    bs = await boss();
+    if (bs.index !== 0 || bs.shields !== 2 || bs.escaped) throw new Error(`Tras un error contra el jefe: ${JSON.stringify(bs)}`);
+    let inkSeen = 0;
+    for (let i = 0; i < 10; i++) {
+      await bossReady();
+      bs = await boss();
+      if (bs.inked) { // Chorro de tinta: tocar una caneca primero limpia el residuo, sin contar como respuesta.
+        inkSeen++;
+        if (inkSeen === 1) { await page.waitForTimeout(500); await shot('18b-jefe-tinta'); }
+        await click(bs.bins[bs.bin], 760);
+        await page.waitForTimeout(400);
+        bs = await boss();
+        if (bs.inked || bs.index !== i) throw new Error(`La tinta no se limpió bien: ${JSON.stringify(bs)}`);
+      }
+      await click(bs.bins[bs.bin], 760);
+      await bossIndex(i + 1);
+    }
+    if (inkSeen !== 3) throw new Error(`Plastipulpo debía usar la tinta 3 veces en 10 residuos, la usó ${inkSeen}`);
+    await waitScene('Results');
     await page.waitForTimeout(2600);
-    await shot('18-mundo-recuperado');
-    save = await page.evaluate(() => JSON.parse(localStorage.getItem('ecomision.save.v1')).progress);
-    if (save.missionProgress['ocean-4'].stars !== 3) throw new Error(`ocean-4: ${JSON.stringify(save.missionProgress['ocean-4'])}`);
-    if (JSON.stringify(save.unlockedWorlds) !== '["city","forest","ocean","mountain"]') throw new Error(`Al recuperar el océano: ${save.unlockedWorlds}`);
-    console.log('  ✓     preguntas completas: océano recuperado y montaña abierta');
+    await shot('18c-jefe-derrotado');
+    save = await page.evaluate(() => JSON.parse(localStorage.getItem('ecomision.save.v1'))).then((d) => d.progress);
+    if (!save.missionProgress['ocean-5']) throw new Error('No se guardó la victoria contra el jefe');
+    if (JSON.stringify(save.unlockedWorlds) !== '["city","forest","ocean","mountain"]') throw new Error(`Al derrotar al jefe: ${save.unlockedWorlds}`);
+    console.log('  ✓     jefe Plastipulpo derrotado: océano recuperado y montaña abierta');
+
+    // El jefe se puede escapar: tres errores agotan los escudos y se ofrece reintentar (sin perder nada).
+    await page.keyboard.press('Escape');
+    await waitScene('MissionIntro');
+    await page.waitForTimeout(600);
+    await shot('18d-niveles-completos');
+    await click(...ROW(5));
+    await waitScene('Boss');
+    for (let k = 0; k < 3; k++) {
+      await bossReady();
+      bs = await boss();
+      if (bs.inked) { await click(bs.bins[bs.bin], 760); await page.waitForTimeout(400); }
+      await click(bs.bins[Object.keys(bs.bins).find((b) => b !== bs.bin)], 760);
+      await page.waitForFunction(() => window.__ECOMISION__.scene.getScene('Boss').explain.visible, null, { timeout: 40000 });
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(500);
+    }
+    bs = await boss();
+    // Solo tiene la Ola limpiadora (no el Escudo de hojas), así que los tres errores cuentan.
+    if (!bs.escaped || bs.shields !== 0 || bs.index !== 0) throw new Error(`El jefe debía escapar: ${JSON.stringify(bs)}`);
+    await page.waitForTimeout(900);
+    await shot('18e-jefe-escapa');
+    const before = await page.evaluate(() => localStorage.getItem('ecomision.save.v1'));
+    await page.keyboard.press('Enter'); // Reintentar
+    await page.waitForFunction(() => { const s = window.__ECOMISION__.scene.getScene('Boss'); return s.scene.isActive() && !s.escaped && s.shields === 3 && !s._leaving; }, null, { timeout: 40000 });
+    if (before !== await page.evaluate(() => localStorage.getItem('ecomision.save.v1'))) throw new Error('Que el jefe escape no debe cambiar la partida guardada');
+    console.log('  ✓     el jefe escapa sin escudos y se puede reintentar sin perder nada');
+    await bossReady();
 
     // Misión 2 (contrarreloj opcional): el reloj aparece y no corre durante las animaciones.
     await page.keyboard.press('Escape');
@@ -335,14 +413,24 @@ async function main() {
     await click(...ROW(2));
     await waitScene('Sorting');
     await waitReady();
-    const timer = await page.evaluate(() => { const s = window.__ECOMISION__.scene.getScene('Sorting'); return { timed: s.setup.timed, left: s.timeLeft, total: s.round.total, clean: s.env.clean }; });
+    const timer = await page.evaluate(() => { const s = window.__ECOMISION__.scene.getScene('Sorting'); return { timed: s.setup.timed, left: s.timeLeft, total: s.round.total, clean: s.env.clean, uses: s.abilityBar.uses }; });
     if (!timer.timed || !(timer.left > timer.total * 7 - 5 && timer.left <= timer.total * 7) || timer.clean !== 1) throw new Error(`Contrarreloj: ${JSON.stringify(timer)}`);
+    // Habilidad ganada a Plastipulpo: la Ola limpiadora clasifica un residuo, una sola vez por nivel.
+    if (JSON.stringify(timer.uses) !== '{"lupa":0,"ola":1}') throw new Error(`Habilidades disponibles: ${JSON.stringify(timer.uses)}`);
     await shot('19-contrarreloj');
+    await click(1810, 300);
+    await waitIndex(1);
+    await waitReady();
+    await click(1810, 300); // ya no quedan usos: no hace nada
+    await page.waitForTimeout(700);
+    const afterOla = await page.evaluate(() => { const s = window.__ECOMISION__.scene.getScene('Sorting'); return { index: s.round.index, uses: s.abilityBar.uses.ola }; });
+    if (afterOla.index !== 1 || afterOla.uses !== 0) throw new Error(`Ola limpiadora: ${JSON.stringify(afterOla)}`);
+    console.log('  ✓     habilidad Ola limpiadora: un uso por nivel');
 
     // ---- Recompensas: insignias ganadas, tienda, álbum y perfil.
     save = await page.evaluate(() => JSON.parse(localStorage.getItem('ecomision.save.v1')));
     if (JSON.stringify(save.rewards.unlockedBadges) !== '["first","ocean"]') throw new Error(`Insignias: ${save.rewards.unlockedBadges}`);
-    if (save.progress.ecoCoins !== 69) throw new Error(`Monedas antes de la tienda: ${save.progress.ecoCoins}`);
+    if (save.progress.ecoCoins !== 95) throw new Error(`Monedas antes de la tienda: ${save.progress.ecoCoins}`);
     await page.keyboard.press('Escape');
     await waitScene('MissionIntro');
     await page.keyboard.press('Escape');
@@ -358,27 +446,26 @@ async function main() {
     // Tortuga (30 monedas + insignia del océano): primer toque pide confirmar, el segundo compra y la estrena.
     await click(...CARD(5));
     await page.waitForTimeout(300);
-    if ((await readSave()).progress.ecoCoins !== 69) throw new Error('Un solo toque no debe comprar');
+    if ((await readSave()).progress.ecoCoins !== 95) throw new Error('Un solo toque no debe comprar');
     await click(...CARD(5));
     await page.waitForTimeout(400);
     save = await readSave();
-    if (save.progress.ecoCoins !== 39 || save.profile.avatar !== 'tortuga' || !save.rewards.unlockedCharacters.includes('tortuga')) throw new Error(`Compra de la tortuga: ${JSON.stringify(save.profile)} ${save.progress.ecoCoins}`);
-    // Búho (pide nivel 5) y mono (40 monedas, hay 39): no se compran y no gastan nada.
+    if (save.progress.ecoCoins !== 65 || save.profile.avatar !== 'tortuga' || !save.rewards.unlockedCharacters.includes('tortuga')) throw new Error(`Compra de la tortuga: ${JSON.stringify(save.profile)} ${save.progress.ecoCoins}`);
+    // Búho (pide nivel 5): no se compra y no gasta nada.
     await click(...CARD(6)); await page.waitForTimeout(300); await click(...CARD(6)); await page.waitForTimeout(300);
-    await click(...CARD(4)); await page.waitForTimeout(300); await click(...CARD(4)); await page.waitForTimeout(300);
     save = await readSave();
-    if (save.progress.ecoCoins !== 39 || save.rewards.unlockedCharacters.length !== 5) throw new Error(`Compras no permitidas: ${JSON.stringify(save.rewards)}`);
+    if (save.progress.ecoCoins !== 65 || save.rewards.unlockedCharacters.length !== 5) throw new Error(`Compras no permitidas: ${JSON.stringify(save.rewards)}`);
     // Accesorios: gorra (20). Luego se quita y se vuelve a poner sin pagar otra vez.
     await click(800 + 370, 262);
     await page.waitForTimeout(400);
     await click(...CARD(0)); await page.waitForTimeout(300); await click(...CARD(0)); await page.waitForTimeout(400);
     save = await readSave();
-    if (save.progress.ecoCoins !== 19 || save.profile.accessory !== 'gorra') throw new Error(`Compra de la gorra: ${JSON.stringify(save.profile)} ${save.progress.ecoCoins}`);
+    if (save.progress.ecoCoins !== 45 || save.profile.accessory !== 'gorra') throw new Error(`Compra de la gorra: ${JSON.stringify(save.profile)} ${save.progress.ecoCoins}`);
     await click(...CARD(0)); await page.waitForTimeout(300);
     if ((await readSave()).profile.accessory !== null) throw new Error('Tocar el accesorio puesto debe quitarlo');
     await click(...CARD(0)); await page.waitForTimeout(400);
     save = await readSave();
-    if (save.progress.ecoCoins !== 19 || save.profile.accessory !== 'gorra') throw new Error('Volver a ponerse un accesorio no debe costar');
+    if (save.progress.ecoCoins !== 45 || save.profile.accessory !== 'gorra') throw new Error('Volver a ponerse un accesorio no debe costar');
     await shot('21-tienda-accesorios');
     console.log('  ✓     tienda: confirmar, comprar, estrenar, quitar y límites de monedas y requisitos');
     await page.keyboard.press('Escape');
@@ -406,6 +493,10 @@ async function main() {
     await waitScene('PlayerProfile');
     await page.waitForTimeout(500);
     await shot('25-perfil');
+    await click(1290 + 330, 926); // Habilidades
+    await waitScene('Abilities');
+    await page.waitForTimeout(500);
+    await shot('26-habilidades');
     await page.keyboard.press('Escape');
     await waitScene('WorldMap');
 

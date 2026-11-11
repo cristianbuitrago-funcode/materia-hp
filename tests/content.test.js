@@ -8,11 +8,13 @@ import { CHARACTER_SVG, EXPRESSIONS, avatarSVG } from '../src/art/characters.js'
 import { ICON_NAMES, iconSVG, worldIconSVG } from '../src/art/icons.js';
 
 describe('mundos', () => {
-  it('son cinco, en orden y con cuatro misiones cada uno', () => {
+  it('son cinco, en orden, y cada uno tiene cinco niveles con su lugar', () => {
     expect(WORLDS.map((w) => w.order)).toEqual([1, 2, 3, 4, 5]);
     expect(new Set(WORLDS.map((w) => w.id)).size).toBe(5);
     for (const w of WORLDS) {
-      expect(w.missions).toHaveLength(4);
+      expect(w.missions).toHaveLength(5);
+      expect(w.places).toHaveLength(5);
+      expect(new Set(w.places).size).toBe(5);
       expect(CAST[w.guide]).toBeTruthy();
       expect(w.name && w.description && w.intro && w.badge).toBeTruthy();
     }

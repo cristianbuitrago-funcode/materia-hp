@@ -40,7 +40,7 @@ export class PlayerProfileScene extends Phaser.Scene {
 
     const answers = pr.correctAnswers + pr.incorrectAnswers;
     const stats = [
-      ['ic-play', 0x26a69a, 'Misiones terminadas', `${ctx.missionsDone} de ${ALL_MISSION_IDS.length}`],
+      ['ic-play', 0x26a69a, 'Niveles terminados', `${ctx.missionsDone} de ${ALL_MISSION_IDS.length}`],
       ['ic-planeta', 0x1e88e5, 'Mundos recuperados', `${ctx.worldsDone.length} de ${WORLDS.length}`],
       ['ic-book', 0x7b5ea7, 'Residuos aprendidos', `${ctx.learned} de ${WASTES.length}`],
       ['ic-check', 0x2bb673, 'Respuestas acertadas', answers ? `${Math.round((pr.correctAnswers / answers) * 100)} %` : '—'],
@@ -53,7 +53,8 @@ export class PlayerProfileScene extends Phaser.Scene {
       label(this, cx - 370, y, name, { size: 36, origin: [0, 0.5], bold: false });
       label(this, cx + 440, y, value, { size: 40, origin: [1, 0.5] });
     });
-    new Button(this, cx - 250, 926, { label: 'Insignias', icon: 'ic-medal', width: 420, height: 96, fontSize: 40, color: 0xf9a825, onClick: () => goTo(this, 'Badges') });
-    new Button(this, cx + 250, 926, { label: 'Álbum', icon: 'ic-book', width: 420, height: 96, fontSize: 40, color: 0x26a69a, onClick: () => goTo(this, 'Album') });
+    new Button(this, cx - 330, 926, { label: 'Insignias', icon: 'ic-medal', width: 310, height: 96, fontSize: 34, color: 0xf9a825, onClick: () => goTo(this, 'Badges') });
+    new Button(this, cx, 926, { label: 'Álbum', icon: 'ic-book', width: 310, height: 96, fontSize: 34, color: 0x26a69a, onClick: () => goTo(this, 'Album') });
+    new Button(this, cx + 330, 926, { label: 'Habilidades', icon: 'ic-escudo', width: 320, height: 96, fontSize: 32, color: theme.c.purple, onClick: () => goTo(this, 'Abilities') });
   }
 }

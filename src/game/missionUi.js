@@ -6,10 +6,12 @@ import { Character } from '../ui/Character.js';
 import { goTo, openOverlay } from '../core/Navigation.js';
 import { gameState } from '../core/GameState.js';
 import { getWorld } from '../config/worlds.js';
-import { getMission } from '../config/missions.js';
-import { adaptRules, reviewList } from './Difficulty.js';
+import { getMission, MISSIONS_PER_WORLD } from '../config/missions.js';
+import { levelRules, reviewList } from './Difficulty.js';
+import { getBoss } from './bosses.js';
+import { ABILITIES, abilityEffects } from './abilities.js';
 
-export const SCENE_FOR_KIND = { sort: 'Sorting', check: 'Challenge', quiz: 'Challenge' };
+export const SCENE_FOR_KIND = { sort: 'Sorting', check: 'Challenge', quiz: 'Challenge', boss: 'Boss' };
 
 export function startMission(scene, worldId, index) {
   const mission = getMission(worldId, index, gameState.profile.ageMode);
@@ -24,16 +26,23 @@ export function prepareMission(data) {
   if (!world || !gameState.isMissionUnlocked(world.id, index)) return null;
   const mode = gameState.profile.ageMode;
   const mission = getMission(world.id, index, mode);
-  const rules = adaptRules(mode, gameState.progress.recentAnswers);
+  // Dificultad: edad + desempeño reciente + número de nivel (sube con cada uno).
+  const rules = levelRules(mode, gameState.progress.recentAnswers, index);
   rules.size += mission.extra || 0;
+  const effects = abilityEffects(gameState.abilities());
   const firstTime = !gameState.missionState(mission.id);
   const cleanStart = gameState.worldStatus(world.id).clean;
   return {
-    world, mission, mode, rules,
+    world, mission, mode, rules, data: { worldId: world.id, missionIndex: index },
+    place: index, // cada nivel ocurre en un lugar distinto del mundo
+    boss: mission.isBoss ? getBoss(world.id) : null,
+    // Habilidades ganadas a los jefes: usos de los botones y efectos pasivos de la ronda.
+    effects,
+    roundOptions: { hintAfter: rules.hintAfter, shield: effects.shield, coinBonus: effects.coinBonus },
     // Cómo elegir los residuos: repaso de lo que más le cuesta, protagonistas de la misión y residuos del mundo.
     pick: { review: reviewList(gameState.progress.trouble), focus: mission.focus, bins: mission.bins, priority: [world.wastes] },
-    // El mundo se limpia una cuarta parte la primera vez que se termina cada misión.
-    cleanStart, cleanGain: firstTime ? 0.25 : 0,
+    // El mundo se limpia una quinta parte la primera vez que se termina cada nivel.
+    cleanStart, cleanGain: firstTime ? 1 / MISSIONS_PER_WORLD : 0,
     timed: !!mission.timed && mode !== 'explorer', // sin cronómetro para los más pequeños
   };
 }
@@ -45,8 +54,39 @@ export function openingLine(setup) {
   return setup.mission.tip + note;
 }
 
+// Cartel que anuncia el nivel y su lugar al empezar.
+export function showPlaceBanner(scene, setup) {
+  const text = `Nivel ${setup.mission.index + 1} · ${setup.mission.place}`;
+  const t = label(scene, W / 2, 232, text, { size: 64, color: '#FFFFFF', stroke: '#17324D', strokeThickness: 16 }).setDepth(90).setScale(0);
+  scene.tweens.add({ targets: t, scale: 1, duration: 320, ease: 'Back.out' });
+  scene.tweens.add({ targets: t, alpha: 0, y: 200, duration: 500, delay: 2100, onComplete: () => t.destroy() });
+}
+
+// Botones de las habilidades activas (Lupa y Ola), con los usos que quedan en el nivel.
+// handlers = { lupa: fn, ola: fn }: cada uno devuelve true si la habilidad se pudo usar.
+export function createAbilityBar(scene, setup, handlers, x = 1810, y0 = 300) {
+  const bar = { uses: { ...setup.effects.uses }, buttons: {} };
+  ABILITIES.filter((a) => a.kind === 'active' && bar.uses[a.id] > 0).forEach((a, i) => {
+    const y = y0 + i * 150;
+    const btn = new Button(scene, x, y, {
+      icon: a.icon, width: 124, height: 124, radius: 62, color: a.color, sound: 'pop',
+      onClick: () => {
+        if (bar.uses[a.id] <= 0 || !handlers[a.id]()) return;
+        bar.uses[a.id]--;
+        count.setText(String(bar.uses[a.id]));
+        if (bar.uses[a.id] <= 0) btn.setEnabled(false);
+      },
+    });
+    scene.add.circle(x + 46, y - 46, 24, theme.c.ink).setStrokeStyle(4, 0xffffff).setDepth(5);
+    const count = label(scene, x + 46, y - 46, String(bar.uses[a.id]), { size: 28, color: '#FFFFFF' }).setDepth(6);
+    bar.buttons[a.id] = btn;
+  });
+  return bar;
+}
+
 // Barra superior: volver, avance, monedas y ajustes. `unit` es "Residuo", "Pregunta"…
-export function createHud(scene, { unit, onBack }) {
+// Para los jefes: `format` da el texto y `life` hace que la barra muestre la vida que queda.
+export function createHud(scene, { unit, onBack, format = null, life = false }) {
   new Button(scene, 110, 100, { icon: 'ic-back', width: 120, height: 120, radius: 60, color: theme.c.greenDark, onClick: onBack });
   panel(scene, W / 2, 100, 760, 110, { radius: 55, strokeWidth: 5 });
   const text = label(scene, W / 2, 76, '', { size: 36 });
@@ -56,11 +96,12 @@ export function createHud(scene, { unit, onBack }) {
   return {
     update(round) {
       const done = round.index, total = round.total;
-      text.setText(round.finished ? '¡Misión completa!' : `${unit} ${done + 1} de ${total}`);
+      text.setText(format ? format(round) : round.finished ? '¡Nivel completo!' : `${unit} ${done + 1} de ${total}`);
       const x = W / 2 - 330, y = 108, w = 660, h = 26;
+      const filled = life ? total - done : done;
       bar.clear();
       bar.fillStyle(0xd9d2bd, 1); bar.fillRoundedRect(x, y, w, h, 13);
-      if (done > 0) { bar.fillStyle(theme.c.green, 1); bar.fillRoundedRect(x, y, Math.max(h, (w * done) / total), h, 13); }
+      if (filled > 0) { bar.fillStyle(life ? theme.c.red : theme.c.green, 1); bar.fillRoundedRect(x, y, Math.max(h, (w * filled) / total), h, 13); }
       coins.valueText.setText(String(gameState.progress.ecoCoins + round.coins));
     },
   };
@@ -107,5 +148,5 @@ export function floatReward(scene, x, y, text, icon, tint = null) {
 export function finishMission(scene, setup, round) {
   const summary = round.summary();
   const outcome = gameState.applyRoundResult(summary, setup.mission.id, round.answers());
-  goTo(scene, 'Results', { worldId: setup.world.id, missionIndex: setup.mission.index, summary, ...outcome });
+  goTo(scene, 'Results', { worldId: setup.world.id, missionIndex: setup.mission.index, summary, boss: !!setup.boss, ...outcome });
 }

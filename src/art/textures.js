@@ -1,6 +1,7 @@
 // Recursos gráficos: convierte los SVG en texturas de Phaser y genera
 // texturas sencillas (nubes, hojas, destellos) por código.
 import { CHARACTER_SVG, EXPRESSIONS, avatarSVG, accessorySVG } from './characters.js';
+import { bossSVG, BOSS_SPRITES, BOSS_EXPRESSIONS } from './bosses.js';
 import { ICON_NAMES, iconSVG, coinSVG, worldIconSVG } from './icons.js';
 import { wasteSVG, binSVG } from './wasteArt.js';
 import { WASTES } from '../game/wastes.js';
@@ -22,6 +23,8 @@ export function buildTextureList() {
   for (const [who, fn] of Object.entries(CHARACTER_SVG)) {
     for (const expr of EXPRESSIONS) list.push([`${who}-${expr}`, fn(expr, 1.5)]);
   }
+  // Jefes: se usan con el mismo componente que los personajes.
+  for (const b of BOSS_SPRITES) for (const expr of BOSS_EXPRESSIONS) list.push([`${b}-${expr}`, bossSVG(b, expr, 1.5)]);
   for (const a of AVATARS) list.push([`avatar-${a.id}`, avatarSVG(a.id, 1)]);
   // Las gafas tienen una versión para la rana (ojos más arriba).
   for (const a of ACCESSORIES) list.push([`acc-${a}`, accessorySVG(a, 'oso', 1)]);

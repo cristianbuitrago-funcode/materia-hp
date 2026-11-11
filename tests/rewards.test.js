@@ -30,10 +30,11 @@ describe('insignias', () => {
     expect(s.applyRoundResult(summary({ stars: 1 }), 'city-1').newBadges).toEqual(['first']);
     expect(s.applyRoundResult(summary({ stars: 1 }), 'city-2').newBadges).toEqual([]);
     s.applyRoundResult(summary({ stars: 1 }), 'city-3');
-    expect(s.applyRoundResult(summary({ stars: 1 }), 'city-4').newBadges).toEqual(['city']);
+    expect(s.applyRoundResult(summary({ stars: 1 }), 'city-4').newBadges).toEqual([]); // falta el jefe
+    expect(s.applyRoundResult(summary({ stars: 1 }), 'city-5').newBadges).toEqual(['city']);
     expect(s.rewards.unlockedBadges).toEqual(['first', 'city']);
     // No se entrega dos veces.
-    expect(s.applyRoundResult(summary({ stars: 1 }), 'city-4').newBadges).toEqual([]);
+    expect(s.applyRoundResult(summary({ stars: 1 }), 'city-5').newBadges).toEqual([]);
   });
 
   it('premia el esfuerzo aunque no haya estrellas altas, y el aprendizaje del álbum', () => {
@@ -52,7 +53,8 @@ describe('insignias', () => {
     for (const id of ['city-1', 'city-2', 'city-3', 'city-4']) p.missionProgress[id] = { stars: 3, plays: 5 };
     expect(badgeContext(p).threeStar).toBe(4);
     expect(earnedBadges(p)).not.toContain('stars');
-    p.missionProgress['forest-1'] = { stars: 3, plays: 1 };
+    expect(earnedBadges(p)).not.toContain('city');
+    p.missionProgress['city-5'] = { stars: 3, plays: 1 };
     expect(earnedBadges(p)).toEqual(expect.arrayContaining(['city', 'first', 'stars']));
   });
 

@@ -1,6 +1,8 @@
-// Mundo 2: El Bosque Perdido. Pinos, sendero y animales que regresan.
+// Mundo 2: El Bosque Perdido. Cinco lugares: el sendero, el campamento,
+// el claro, el río y el pantano de Moscardón.
 import { W, H } from '../config/theme.js';
 import { drawSky, addClouds } from '../art/backgrounds.js';
+import { sign, veil } from './kit.js';
 import { gfx, bake, trashPile, litter, flower, tree, pine, bush, smog, bird, butterfly, haze, rnd } from './kit.js';
 
 function rabbit(scene, x, y, s = 1) {
@@ -25,7 +27,66 @@ function mushroom(scene, x, y, s = 1) {
   });
 }
 
-export function buildForest(scene) {
+// Elementos propios de cada lugar. `ground` es el suelo, para pintar encima caminos y agua.
+const PLACES = [
+  // 0 · El sendero
+  (scene, ground, BASE) => {
+    ground.fillStyle(0xd9b98a, 1);
+    ground.fillPoints([{ x: 640, y: H }, { x: 1400, y: H }, { x: 1230, y: 860 }, { x: 1180, y: 740 }, { x: 1130, y: BASE + 6 }, { x: 1040, y: BASE + 6 }, { x: 1000, y: 740 }, { x: 900, y: 860 }], true);
+    ground.fillStyle(0xc7a273, 1);
+    [[1020, 800, 26], [1120, 900, 34], [900, 980, 30], [1250, 1000, 36], [1090, 700, 18]].forEach(([x, y, r]) => ground.fillEllipse(x, y, r * 2.4, r));
+    return sign(scene, 812, BASE - 14, 'SENDERO', 0x7a5236);
+  },
+  // 1 · El campamento
+  (scene, ground, BASE) => {
+    const tent = (x, y, c, c2) => gfx(scene, x, y, (g) => {
+      g.fillStyle(0x000000, 0.14); g.fillEllipse(0, 4, 330, 34);
+      g.fillStyle(c, 1); g.fillTriangle(-150, 0, 150, 0, 0, -200);
+      g.fillStyle(c2, 1); g.fillTriangle(-40, 0, 40, 0, 0, -120);
+      g.lineStyle(5, 0x5d4037, 1); g.lineBetween(0, -200, 0, -224);
+    });
+    const fire = gfx(scene, 810, BASE + 170, (g) => {
+      g.fillStyle(0x5d4037, 1); g.fillRoundedRect(-52, -14, 104, 16, 8); g.fillRoundedRect(-40, -26, 80, 14, 7);
+      g.fillStyle(0xff8a3d, 1); g.fillTriangle(-30, -24, 30, -24, 0, -100);
+      g.fillStyle(0xffd23f, 1); g.fillTriangle(-16, -24, 16, -24, 2, -66);
+    });
+    const log = gfx(scene, 1230, BASE + 160, (g) => { g.fillStyle(0x8d6e63, 1); g.fillRoundedRect(-60, -30, 120, 30, 14); g.fillStyle(0xd7b899, 1); g.fillEllipse(58, -15, 16, 30); });
+    return [tent(540, BASE + 50, 0xff8a3d, 0xb85a1c), tent(1420, BASE + 44, 0x42a5f5, 0x1565c0), fire, log, ...sign(scene, 1232, BASE - 14, 'CAMPING', 0x7a5236)];
+  },
+  // 2 · El claro
+  (scene, ground, BASE) => {
+    ground.fillStyle(0x7fd08f, 1); ground.fillEllipse(960, BASE + 110, 1500, 240);
+    ground.fillStyle(0x94dba1, 1); ground.fillEllipse(900, BASE + 90, 800, 110);
+    const stump = gfx(scene, 810, BASE + 170, (g) => { g.fillStyle(0x8d6e63, 1); g.fillRoundedRect(-44, -56, 88, 60, 10); g.fillStyle(0xd7b899, 1); g.fillEllipse(0, -56, 88, 26); g.lineStyle(3, 0xa1887f, 1); g.strokeEllipse(0, -56, 50, 14); });
+    const fallen = gfx(scene, 1500, BASE + 60, (g) => { g.fillStyle(0x7a5236, 1); g.fillRoundedRect(-170, -50, 340, 50, 24); g.fillStyle(0xd7b899, 1); g.fillEllipse(168, -25, 26, 50); g.fillStyle(0x4cae6e, 1); g.fillEllipse(-60, -52, 90, 18); });
+    return [stump, fallen, bush(scene, 520, BASE + 50, 1.0, 0x3fae6a, 0xff6fa5)];
+  },
+  // 3 · El río
+  (scene, ground, BASE) => {
+    ground.fillStyle(0x4fb7e8, 1);
+    ground.fillPoints([{ x: 1150, y: BASE + 4 }, { x: 1300, y: BASE + 4 }, { x: 1330, y: 800 }, { x: 1180, y: 940 }, { x: 900, y: H }, { x: 300, y: H }, { x: 760, y: 900 }, { x: 1010, y: 780 }], true);
+    ground.fillStyle(0xa6e0f7, 0.8);
+    [[1200, 700, 60], [1120, 830, 90], [860, 960, 120], [620, 1040, 110]].forEach(([x, y, w]) => ground.fillEllipse(x, y, w, 10));
+    ground.fillStyle(0x90a4ae, 1); [[1010, 820, 34], [1290, 880, 28], [760, 990, 40]].forEach(([x, y, r]) => ground.fillEllipse(x, y, r * 2, r));
+    const bridge = gfx(scene, 1220, BASE + 100, (g) => {
+      g.fillStyle(0x8d6e63, 1); g.fillRoundedRect(-190, -16, 380, 26, 8);
+      g.lineStyle(8, 0x6d4c41, 1); [-170, -90, -10, 70, 150].forEach((x) => g.lineBetween(x, -16, x, -70)); g.lineBetween(-180, -66, 180, -66);
+    });
+    return [bridge, ...sign(scene, 812, BASE - 14, 'RÍO', 0x1e88e5)];
+  },
+  // 4 · El pantano (guarida de Moscardón)
+  (scene, ground, BASE) => {
+    ground.fillStyle(0x3d5a45, 1); ground.fillEllipse(960, BASE + 190, 1700, 330);
+    ground.fillStyle(0x4f7359, 1); [[620, BASE + 150, 90], [1300, BASE + 210, 110], [980, BASE + 300, 80]].forEach(([x, y, w]) => ground.fillEllipse(x, y, w, 24));
+    const dead = (x, y, s) => gfx(scene, x, y, (g) => {
+      g.fillStyle(0x4e3b31, 1); g.fillRoundedRect(-16 * s, -300 * s, 32 * s, 304 * s, 10 * s);
+      g.lineStyle(14 * s, 0x4e3b31, 1); g.lineBetween(0, -200 * s, -90 * s, -290 * s); g.lineBetween(0, -150 * s, 100 * s, -250 * s); g.lineBetween(0, -260 * s, 60 * s, -340 * s);
+    });
+    return [dead(520, BASE + 60, 1.1), dead(1420, BASE + 50, 1.25), veil(scene, 0x2f3d1f, 0.3)];
+  },
+];
+
+export function buildForest(scene, place = 0) {
   const BASE = 640;
   drawSky(scene, 0x8fd6c0, 0xeaf8d2);
   addClouds(scene, 2, { yMax: 160, alpha: 0.8 });
@@ -41,16 +102,12 @@ export function buildForest(scene) {
   const ground = scene.add.graphics();
   ground.fillStyle(0x4cae6e, 1); ground.fillRect(0, BASE, W, H - BASE);
   ground.fillStyle(0x3d9a5f, 1); ground.fillEllipse(400, BASE + 10, 900, 90); ground.fillEllipse(1500, BASE + 14, 1000, 100);
-  // Sendero que se pierde en el bosque
-  ground.fillStyle(0xd9b98a, 1);
-  ground.fillPoints([{ x: 640, y: H }, { x: 1400, y: H }, { x: 1230, y: 860 }, { x: 1180, y: 740 }, { x: 1130, y: BASE + 6 }, { x: 1040, y: BASE + 6 }, { x: 1000, y: 740 }, { x: 900, y: 860 }], true);
-  ground.fillStyle(0xc7a273, 1);
-  [[1020, 800, 26], [1120, 900, 34], [900, 980, 30], [1250, 1000, 36], [1090, 700, 18]].forEach(([x, y, r]) => ground.fillEllipse(x, y, r * 2.4, r));
+  const props = PLACES[place](scene, ground, BASE);
 
   // Árboles grandes en primer plano
   fixed.push(ground,
     tree(scene, 70, 760, 2.1, 0x2a7d4f, 0x4fbf7a, 0x5d4037), tree(scene, 1860, 780, 2.2, 0x2a7d4f, 0x4fbf7a, 0x5d4037),
-    bush(scene, 330, BASE + 60, 1.1), bush(scene, 1640, BASE + 70, 1.2));
+    bush(scene, 330, BASE + 60, 1.1), bush(scene, 1640, BASE + 70, 1.2), ...props);
   bake(scene, fixed);
 
   const dirty = [

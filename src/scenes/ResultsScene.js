@@ -5,6 +5,8 @@ import { drawMeadow } from '../art/backgrounds.js';
 import { Button, label, panel, toast } from '../ui/widgets.js';
 import { getWorld } from '../config/worlds.js';
 import { getBadge } from '../game/rewards.js';
+import { getAbility } from '../game/abilities.js';
+import { getBoss } from '../game/bosses.js';
 import { MISSIONS_PER_WORLD } from '../config/missions.js';
 import { startMission } from '../game/missionUi.js';
 import { Character } from '../ui/Character.js';
@@ -37,7 +39,7 @@ export class ResultsScene extends Phaser.Scene {
 
     const cx = W / 2 + 190;
     panel(this, cx, 470, 1180, 780, { radius: 70 });
-    label(this, cx, 150, '¡Misión cumplida!', { size: 92, color: '#FFFFFF', stroke: '#14804A', strokeThickness: 22 });
+    label(this, cx, 150, data.boss ? '¡Jefe derrotado!' : '¡Nivel superado!', { size: 92, color: '#FFFFFF', stroke: '#14804A', strokeThickness: 22 });
 
     // Estrellas: aparecen una por una.
     for (let i = 0; i < 3; i++) {
@@ -50,7 +52,7 @@ export class ResultsScene extends Phaser.Scene {
       });
     }
 
-    const headline = data.worldCompleted ? `¡Recuperaste ${getWorld(data.worldId).name}!` : MESSAGES[s.stars];
+    const headline = data.boss ? `¡Venciste a ${getBoss(data.worldId).name} y recuperaste este mundo!` : MESSAGES[s.stars];
     label(this, cx, 470, headline, { size: 46, color: theme.hex.greenDark, wrap: 1050 });
     label(this, cx, 548, `Acertaste ${s.firstTry} de ${s.total} a la primera`, { size: 40, bold: false });
 
@@ -69,20 +71,22 @@ export class ResultsScene extends Phaser.Scene {
 
     // Botones: volver a la lista de misiones y seguir con lo que toca.
     const idx = data.missionIndex, world = getWorld(data.worldId);
-    new Button(this, cx - 320, 970, { label: 'Misiones', icon: 'ic-back', width: 420, height: 120, fontSize: 52, color: theme.c.greenDark, onClick: () => goTo(this, 'MissionIntro', { worldId: world.id }) });
+    new Button(this, cx - 320, 970, { label: 'Niveles', icon: 'ic-back', width: 420, height: 120, fontSize: 52, color: theme.c.greenDark, onClick: () => goTo(this, 'MissionIntro', { worldId: world.id }) });
     const hasNext = idx < MISSIONS_PER_WORLD - 1;
     const forward = hasNext ? () => startMission(this, world.id, idx + 1) : () => goTo(this, 'WorldMap');
-    new Button(this, cx + 240, 970, { label: hasNext ? 'Siguiente misión' : 'Ver el mapa', icon: 'ic-next', width: 620, height: 130, fontSize: 56, color: theme.c.orange, onClick: forward });
+    new Button(this, cx + 240, 970, { label: hasNext ? 'Siguiente nivel' : 'Ver el mapa', icon: 'ic-next', width: 620, height: 130, fontSize: 56, color: theme.c.orange, onClick: forward });
     this.onCancel = () => goTo(this, 'MissionIntro', { worldId: world.id });
     this.onDefaultAction = forward;
 
     this.time.delayedCall(300, () => audio.sfx('fanfare'));
     // Avisos, uno tras otro: insignias nuevas y mundo abierto.
-    const news = (data.newBadges || []).map((id) => `¡Nueva insignia: ${getBadge(id).name}!`);
+    const news = [];
+    if (data.newAbility) { const a = getAbility(data.newAbility); news.push(`¡Nueva habilidad: ${a.name}! ${a.desc}`); }
+    news.push(...(data.newBadges || []).map((id) => `¡Nueva insignia: ${getBadge(id).name}!`));
     const opened = data.unlockedWorld && getWorld(data.unlockedWorld);
     if (opened) news.push(`¡Abriste un mundo nuevo: ${opened.name}!`);
     else if (data.worldCompleted) news.push('¡Salvaste el planeta! Eres un verdadero guardián.');
-    news.forEach((text, i) => this.time.delayedCall(1800 + i * 4200, () => { audio.sfx('success'); toast(this, text, { who: 'eco', duration: 3800 }); }));
+    news.forEach((text, i) => this.time.delayedCall(1800 + i * 5200, () => { audio.sfx('success'); toast(this, text, { who: 'eco', duration: 4800 }); }));
   }
 
   prize(x, y, icon, text, tint = null) {
