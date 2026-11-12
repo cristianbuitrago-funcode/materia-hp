@@ -18,6 +18,12 @@ npm test             # pruebas unitarias (Vitest)
 npm run test:smoke   # recorre el juego compilado en un navegador real (requiere Playwright + Chromium)
 ```
 
+## Tráiler
+
+`media/trailer-ecomision.mp4` es un tráiler de 30 segundos (1920×1080) hecho con imágenes reales
+del juego y su música. Se regenera con `npm run build && npm run trailer` (requiere Playwright,
+Chromium y ffmpeg): el guion está en `scripts/trailer.cjs`.
+
 ## Arquitectura técnica
 
 - **Phaser 3** (motor 2D, WebGL con respaldo a Canvas) + **Vite** (empaquetado) + JavaScript ES modules.
